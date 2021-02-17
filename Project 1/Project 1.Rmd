@@ -89,7 +89,7 @@ We want to find the expected MSE at $\bfx_0$, and this is most easily done using
 $$
   \E((y_0 - \tilde{f}(\bfx_0))^2) = \E(\tilde{f}(\bfx_0) - f(\bfx_0))^2 + \Var(\tilde{f}(\bfx_0)) + \Var(\varepsilon).
 $$
-The last two terms are known to us now, so we look further at the first term
+The last two terms are known to us now, so we look further at the first term, the squared bias,
 \begin{equation} \label{eq:squaredBias}
   \begin{split}
     \E(\tilde{f}(\bfx_0) - f(\bfx_0))^2 &= [\E(\tilde{f}(\bfx_0)) - \E(f(\bfx_0))]^2 = [\E(\tilde{f}(\bfx_0)) - f(\bfx_0)]^2
@@ -213,8 +213,51 @@ ggplot(dfAll)+
 # Problem 4
 
 ## a)
+We wish to show that for the linear regression model $Y = X \beta + \varepsilon$, the LOOCV statistic is given by
+$$
+  \mathrm{CV} = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{y}_i}{1 - h_i} \right)^2,
+$$
+where $h_i = \bfx_i^\top (X^\top X)^{-1} \bfx_i$, and $\bfx_i^\top$ is the $i$-th row of $X$.
+
+Generally we can write $\mathrm{CV} = \sum_{i=1}^N e_{(-i)}^2 / N$, where $e_{(-i)} = y_i - \hat{y}_{(-i)}$. We use the notation $A_{(-i)}$ to symbolize that element $i$ is removed from $A$ if it is a vector, and row $i$ is removed from $A$ if it is a matrix. For a linear regression model $\bfY = X \bfbeta + \varepsilon$, the estimate of $\bfbeta$ without the $i$-th case is
+$$
+  \hat{\bfbeta}_{(-i)} = (X_{(-i)}^\top X_{(-i)})^{-1} X_{(-i)}^\top \bfY_{(-i)}.
+$$
+From what we then know, we may write $e_{(-i)} = y_i - \bfx_i^\top \hat{\bfbeta}_{(-i)}$. We want another expression for $\hat{\bfbeta}_{(-i)}$, and using the Sherman-Morrison formula,
+$$
+  (X_{(-i)}^\top X_{(-i)})^{-1} = (X^\top X - \bfx_i \bfx_i^\top)^{-1} = (X^\top X)^{-1} - \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 + \bfx_i (X^\top X)^{-1} \bfx_i^\top}.
+$$
+By the definition of $h_i$, we then get that
+$$
+  (X_{(-i)}^\top X_{(-i)})^{-1} = (X^\top X)^{-1} + \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 - h_i}.
+$$
+It is also clear that $X_{(-i)}^\top \bfY_{(-i)} = X^\top \bfY - \bfx_i y_i$, and thus
+$$
+  \hat{\bfbeta}_{(-i)} = (X_{(-i)}^\top X_{(-i)})^{-1} X_{(-i)}^\top \bfY_{(-i)} = \left[ (X^\top X)^{-1} + \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 - h_i} \right] (X^\top \bfY - \bfx_i y_i).
+$$
+Multiplying out this expression we then get
+\begin{align*}
+  \hat{\bfbeta}_{(-i)} &= (X^\top X)^{-1} X^\top \bfY + \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 - h_i} X^\top \bfY - (X^\top X)^{-1} \bfx_i y_i - \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 - h_i} \bfx_i y_i
+  \\
+  &= \hat{\bfbeta} + \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top \hat{\bfbeta}}{1 - h_i} - (X^\top X)^{-1} \bfx_i y_i - \frac{(X^\top X)^{-1} \bfx_i h_i}{1 - h_i} y_i
+  \\
+  &= \hat{\bfbeta} + \frac{(X^\top X)^{-1} \bfx_i}{1 - h_i} \left[ \bfx_i^\top \hat{\bfbeta} - y_i (1 - h_i) - h_i y_i \right]
+  \\
+  &= \hat{\bfbeta} + \frac{(X^\top X)^{-1} \bfx_i}{1 - h_i} \left( \hat{y}_i - y_i \right) = \hat{\bfbeta} - \frac{(X^\top X)^{-1} \bfx_i}{1 - h_i} e_i,
+\end{align*}
+where we let $e_i = y_i - \hat{y}_i$. This allows us to find
+\begin{align*}
+  e_{(-i)} &= y_i - \bfx_i^\top \hat{\bfbeta}_{(-i)} = y_i - \bfx_i^\top \hat{\bfbeta} + \frac{\bfx_i^\top (X^\top X)^{-1} \bfx_i}{1 - h_i} e_i = e_i + \frac{h_i}{1 - h_i} e_i = \frac{e_i}{1 - h_i}.
+\end{align*}
+It then follows that
+$$
+  \mathrm{CV} = \frac{1}{N} \sum_{i=1}^N e_{(-i)}^2 = \frac{1}{N} \sum_{i=1}^N \left( \frac{e_i}{1 - h_i} \right)^2 = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{y}_i}{1 - h_i} \right)^2,
+$$
+which was what to be shown. $\boldsymbol{Q.E.D.}$
+
 
 ## b)
+False, True, True, False.
 
 
 # Problem 5
