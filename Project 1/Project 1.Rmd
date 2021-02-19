@@ -23,6 +23,8 @@ knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, message=FALSE, warning=FALSE, stri
 \newcommand{\bfZ}{\mathbf{Z}}
 \newcommand{\bfbeta}{\boldsymbol{\beta}}
 
+\newcommand{\Hquad}{\hspace{0.5em}}
+
 ```{r rpackages, eval=FALSE,echo=FALSE}
 install.packages("knitr") #probably already installed
 install.packages("rmarkdown") #probably already installed
@@ -176,7 +178,7 @@ exp_mse <- BIAS + VAR + sigma^2
 cols <- c("exp_mse" = "blue", "bias" = "red", "variance" = "green4")
 dfAll <- data.frame(lambda = lambdas, bias = BIAS, var = VAR, exp_mse = exp_mse)
 
-ggplot(dfAll)+
+ggplot(dfAll) +
   geom_line(aes(x = lambda, y = exp_mse, color = "exp_mse")) +
   geom_line(aes(x = lambda, y = bias, color = "bias")) +
   geom_line(aes(x = lambda, y = var, color = "variance")) +
@@ -200,15 +202,125 @@ ggplot(dfAll)+
 
 # Problem 3
 
+```{r, eval=T}
+#read file
+id <- "1i1cQPeoLLC_FyAH0nnqCnnrSBpn05_hO" # google file ID
+diab <- dget(sprintf("https://docs.google.com/uc?id=%s&export=download", id))
+t = MASS::Pima.tr2
+train = diab$ctrain
+test = diab$ctest
+```
+
+
 ## a)
+
+```{r}
+logReg = glm(diabetes~., data = train, family = "binomial")
+summary(logReg)
+```
+
+i) 
+
+For simplicity we write $\beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} = \mathbf{x}^T \beta$, where $\beta = (\beta_0 \Hquad \dots \Hquad \beta_7)^T$ and $\mathbf{x} = (1\Hquad x_1 \Hquad \dots \Hquad  x_7 )^T$). Furthermore let $P(y_i = 1| \mathbf{X}={\mathbf{x}}_i) = p_i$. Starting from the expression for $p_i$ we get
+
+
+\begin{align*}
+ p_i &= \frac{e^{\mathbf{x}^T \beta}}{1+e^{\mathbf{x}^T \beta}} \\
+ p_i + p_ie^{\mathbf{x}^T \beta} &= e^{\mathbf{x}^T \beta} \\
+ p_i &= e^{\mathbf{x}^T \beta}(1-p_i) \\
+ \frac{p_i}{1-p_i} &= e^{\mathbf{x}^T \beta}\\
+ log(\frac{p_i}{1-p_i})  &= \mathbf{x}^T \beta = \beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} \quad \blacksquare
+\end{align*}
+
+ii)
+ 
+```{r}
+logReg.prob = predict(logReg, newdata = test , type="response")
+logReg.pred = ifelse(logReg.prob >0.5, "1", "0")
+c=table("predicted" = logReg.pred, "true" = test$diabetes)
+
+library(yardstick)
+library(ggplot2)
+
+cm = conf_mat(c)
+
+autoplot(cm, type = "heatmap") + ggtitle("Confusion table Logistic Regression")
+```
+
+From the table above we find $\text{sensitivity} = \frac{48}{77} = 0.623$, and $\text{specificity} = \frac{137}{155}=0.884$.
+
+
 
 ## b)
 
+(i) $\pi_k$ is the prior probability for class k, i.e $Pr(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random person of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be the mean values of each predictors for a correspondingly diabetic or non diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in lda assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class, and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
+
+
+
+(ii)
+
+```{r}
+library(MASS)
+lda.model = lda(diabetes~., data=train)
+qda.model = qda(diabetes~., data=train)
+
+lda.modelProb = predict(lda.model, newdata = test)$posterior
+lda.modelPred = predict(lda.model, newdata = test)$class
+table(predicted = lda.modelPred, true =test$diabetes)
+
+qda.modelProb = predict(qda.model, newdata = test)$posterior
+qda.modelPred = predict(qda.model, newdata = test)$class
+table(predicted= qda.modelPred,true= test$diabetes)
+
+#lda.model
+
+```
+
+The difference between LDA and QDA models, is that in LDA one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary. In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary.
+
 ## c)
+
+i) When classifying a new observation in the KNN approach, one first identifies the $K$ nearest points in the training data, measured in the euclidean metric. Then we classify the observation to the majority class amongst those $K$ nearest points, i.e. we assign the observation to the class with the highest proportion of members among the $K$ points in question.
+
+ii) The tuning parameter $k$ can be chosen by looking at the test error for a range of different values of $k$.Then choose the value that gives the lowest error. Can often be useful to combine this with Cross-Validation.
+
+iii)
+
+```{r}
+library(class)
+knnMod = knn(train = train, test = test, cl = train$diabetes, k = 25, prob = T)
+table(knnMod, test$diabetes)
+```
+Sensitivity $= \frac{41}{77} =  0.532$, specificity $= \frac{144}{155} = 0.929$.
 
 ## d)
 
+```{r}
 
+knnModProb = attributes(knnMod)$prob
+knnModProb = ifelse(knnMod == 0, 1 - knnModProb,knnModProb)
+
+
+library(pROC)
+library(plotROC)
+library(ggplot2)
+
+glmroc = roc(response = test$diabetes, predictor = logReg.prob)
+ldaroc = roc(response = test$diabetes, predictor = lda.modelProb[,2])
+qdaroc = roc(response = test$diabetes, predictor = qda.modelProb[,2])
+knnroc = roc(response = test$diabetes, predictor = knnModProb)
+
+dat = data.frame(diabetes = test$diabetes, glm = logReg.prob, lda = lda.modelProb[,2], qda = qda.modelProb[,2], knn = knnModProb)
+dat_long = melt_roc(dat, "diabetes", c("glm", "lda", "qda", "knn"))
+ggplot(dat_long, aes(d = D, m = M, color = name)) + geom_roc(n.cuts=F) + xlab("1-Specificity") + ylab("Sensitivity")
+
+auc(glmroc)
+auc(ldaroc)
+auc(qdaroc)
+auc(knnroc)
+```
+
+We observe that the LDA model has the highest AUC value, $0.849$, followed by the Logistic Regression model, AUC $= 0.8451$. Thus measured in the AUC metric, we would say that LDA performs the best. Since the difference in AUC between Logistic Regression and LDA is relatively small, we would prefer Logistic Regression for interpretability?
 
 # Problem 4
 
@@ -225,7 +337,7 @@ $$
 $$
 From what we then know, we may write $e_{(-i)} = y_i - \bfx_i^\top \hat{\bfbeta}_{(-i)}$. We want another expression for $\hat{\bfbeta}_{(-i)}$, and using the Sherman-Morrison formula,
 $$
-  (X_{(-i)}^\top X_{(-i)})^{-1} = (X^\top X - \bfx_i \bfx_i^\top)^{-1} = (X^\top X)^{-1} - \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 + \bfx_i (X^\top X)^{-1} \bfx_i^\top}.
+  (X_{(-i)}^\top X_{(-i)})^{-1} = (X^\top X - \bfx_i \bfx_i^\top)^{-1} = (X^\top X)^{-1} + \frac{(X^\top X)^{-1} \bfx_i \bfx_i^\top (X^\top X)^{-1}}{1 - \bfx_i (X^\top X)^{-1} \bfx_i^\top}.
 $$
 By the definition of $h_i$, we then get that
 $$
