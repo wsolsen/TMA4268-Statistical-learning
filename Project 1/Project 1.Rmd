@@ -16,6 +16,9 @@ library(magrittr)
 library(dplyr)
 library(tidyverse)
 library(MASS)
+library(yardstick)
+library(class)
+library(pROC)
 ```
 
 \newcommand{\E}{\operatorname{E}}
@@ -125,7 +128,7 @@ sigma <- values$sigma
 ```
 We may then calculate the squared bias $\E(\tilde{f}(\bfx_0) - f(\bfx_0))^2$, using Equation \eqref{eq:squaredBias}. Plotting this for $\lambda \in [0, 2]$, we get the result as in Figure \ref{fig:bias}. We see that the squared bias increases with large $\lambda > 0.5$, and has a minimum when $\lambda = 0$ and $\lambda \approx 0.5$. This is expected for $\lambda = 0$, because we then get that $\tilde{\bfbeta}$ is equal to the OLS estimator. The bias measures how good the estimator is in estimating the real value, so this makes sense. From the figure it also appears that for $\lambda \approx 0.5$, the estimator $\tilde{\bfbeta}$ us estimating the real value $\bfbeta$ very good. For increasing $\lambda$ after this, the estimator seems to do a worse job in estimating $\bfbeta$.
 ```{r, echo=TRUE, eval=TRUE, fig.cap="\\label{fig:bias}The squared bias $\\E(\\tilde{f}(\\bfx_0) - f(\\bfx_0))^2$ as a function of $\\lambda$."}
-library(ggplot2)
+
 bias <- function(lambda, X, x0, beta) {
   p <- ncol(X)
   inv <- solve(t(X) %*% X + lambda * diag(p))
@@ -193,7 +196,8 @@ ggplot(dfAll) +
   scale_color_manual(values = cols)
 ```
 
-\pagebreak
+
+
 # Problem 2
 
 Read the file:
@@ -268,7 +272,8 @@ deceased_logit=glm(deceased~sex+age+country, data=d.corona, family=binomial)
 summary(deceased_logit)
 ```
 
-(i) 
+### (i)
+
 We create a dataframe containing the values of the covariates, and use the predict function to get the probability:
 
 ```{r, echo=TRUE, eval=TRUE}
@@ -278,10 +283,12 @@ p_korea_male_75 = predict(deceased_logit, newdata=korea_male_75, interval='predi
 
 The probability of a 75 year old Korean male to die from Covid is thus: `r p_korea_male_75`
 
-(ii)
+### (ii)
+
 We see that the model has a dummy variable sexmale with an estimated positive coefficient of `r deceased_logit$coefficients[2]`. The p-value of this coefficient estimate is small. So there is evidence that males have higher probability of dying that females.
 
-(iii)
+### (iii)
+
 We see that the model has dummy variables: countryindonesia, countryjapan and countryKorea, such that France serves as the base line for the model. The differences we observer are:
 
 - Residents of Indonesia are found to have a smaller probability of dying from Covid than residents of France, but the finding is not significant (high p-value). 
@@ -290,12 +297,14 @@ We see that the model has dummy variables: countryindonesia, countryjapan and co
 
 In summary one must therefore conclude that there is evidence that country of residence influences the probability to decease.
 
-(iv)
-The estimated coefficient of age is `r deceased_logit$coefficients[3]` and it is found to be significant. We know that the log-odds is proportional to the linear expression of coefficients and covariates. This, increasing a persons age by 10 years would increase the log-odds by `r 10.0*deceased_logit$coefficients[3]`. The increase in odds would thus be by a factor: `r exp(10.0*deceased_logit$coefficients[3])`.
+### (iv)
+
+The estimated coefficient of age is `r deceased_logit$coefficients[3]` and it is found to be significant. We know that the log-odds is proportional to the linear expression of coefficients and covariates. Thus, increasing a persons age by 10 years would increase the log-odds by `r 10.0*deceased_logit$coefficients[3]`. The increase in odds would thus be by a factor: `r exp(10.0*deceased_logit$coefficients[3])`.
 
 ## c)
 
-(i) 
+### (i)
+
 To answer the question we fit a model using covariates: sex, age and the interaction sex * age.
 
 ```{r, echo=TRUE, eval=TRUE}
@@ -305,7 +314,8 @@ summary(deceased_sex_age_logit)
 
 We see that the p-value of the coefficient sexmale:age has a very high p-value. So there is no evidence for age being a greater risk factor for males compared to females.
 
-(ii)
+### (ii)
+
 To answer the question we fit a model using covariates: country, age and the interaction country * age. It should not matter that data for Japan and Korea are used in the fitting of the model, as they will not affect the coefficients we are interested in.
 
 ```{r, echo=TRUE, eval=TRUE}
@@ -317,28 +327,30 @@ We find some evidence for age being a smaller risk factor for residents of Indon
 
 ## d)
 
-(i) TRUE. (We interpret the "null rate" as how often you would be wrong if you always predicted the majority class. From numbers quoted in exercise 2 a) we see that the fraction of deceased in the samples is: $\frac{105}{105+1905} = 0.0522$, so the "null rate" for misclassification would therefore be 5.22% if we only predicted non-deceased.)
+True, True, True, False.
 
-(ii) TRUE. The model has labeled all the samples in the training data as non-deceased. This is not a very useful classifier.
+<!-- (i) TRUE. (We interpret the "null rate" as how often you would be wrong if you always predicted the majority class. From numbers quoted in exercise 2 a) we see that the fraction of deceased in the samples is: $\frac{105}{105+1905} = 0.0522$, so the "null rate" for misclassification would therefore be 5.22% if we only predicted non-deceased.) -->
 
-(iii) TRUE. 
-```{r, echo=TRUE, eval=TRUE}
-deceased_lda = lda(deceased~sex+age+country, data=d.corona)
-deceased_lda_prediction = predict(deceased_lda, d.corona)
-names(deceased_lda_prediction)
-table(deceased_lda_prediction$class, d.corona$deceased)
-```
-$\frac{1905}{1905+0}$
+<!-- (ii) TRUE. The model has labeled all the samples in the training data as non-deceased. This is not a very useful classifier. -->
 
-(iv) FALSE.
-```{r, echo=TRUE, eval=TRUE}
-deceased_qda = qda(deceased~sex+age+country, data=d.corona)
-deceased_qda_prediction = predict(deceased_qda, d.corona)
-names(deceased_qda_prediction)
-table(deceased_qda_prediction$class, d.corona$deceased)
-```
-QDA sensitivity: $\frac{21}{21+84}$
-LDA sensitivity: $\frac{0}{105+0}$
+<!-- (iii) TRUE.  -->
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- deceased_lda = lda(deceased~sex+age+country, data=d.corona) -->
+<!-- deceased_lda_prediction = predict(deceased_lda, d.corona) -->
+<!-- names(deceased_lda_prediction) -->
+<!-- table(deceased_lda_prediction$class, d.corona$deceased) -->
+<!-- ``` -->
+<!-- $\frac{1905}{1905+0}$ -->
+
+<!-- (iv) FALSE. -->
+<!-- ```{r, echo=TRUE, eval=TRUE} -->
+<!-- deceased_qda = qda(deceased~sex+age+country, data=d.corona) -->
+<!-- deceased_qda_prediction = predict(deceased_qda, d.corona) -->
+<!-- names(deceased_qda_prediction) -->
+<!-- table(deceased_qda_prediction$class, d.corona$deceased) -->
+<!-- ``` -->
+<!-- QDA sensitivity: $\frac{21}{21+84}$ -->
+<!-- LDA sensitivity: $\frac{0}{105+0}$ -->
 
 
 # Problem 3
@@ -360,48 +372,44 @@ logReg = glm(diabetes~., data = train, family = "binomial")
 summary(logReg)
 ```
 
-i) 
+### (i) 
 
-For simplicity we write $\beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} = \mathbf{x}^T \beta$, where $\beta = (\beta_0 \Hquad \dots \Hquad \beta_7)^T$ and $\mathbf{x} = (1\Hquad x_1 \Hquad \dots \Hquad  x_7 )^T$). Furthermore let $P(y_i = 1| \mathbf{X}={\mathbf{x}}_i) = p_i$. Starting from the expression for $p_i$ we get
-
+For simplicity we write $\beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} = \mathbf{x}^\top \bfbeta$, where $\bfbeta = (\beta_0 \Hquad \cdots \Hquad \beta_7)^\top$ and $\mathbf{x} = (1\Hquad x_1 \Hquad \cdots \Hquad  x_7 )^\top$. Furthermore let $P(y_i = 1| \mathbf{X}={\mathbf{x}}_i) = p_i$. Starting from the expression for $p_i$ we get
 
 \begin{align*}
- p_i &= \frac{e^{\mathbf{x}^T \beta}}{1+e^{\mathbf{x}^T \beta}} \\
- p_i + p_ie^{\mathbf{x}^T \beta} &= e^{\mathbf{x}^T \beta} \\
- p_i &= e^{\mathbf{x}^T \beta}(1-p_i) \\
- \frac{p_i}{1-p_i} &= e^{\mathbf{x}^T \beta}\\
- log(\frac{p_i}{1-p_i})  &= \mathbf{x}^T \beta = \beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} \quad \blacksquare
+ p_i &= \frac{e^{\mathbf{x}^\top \bfbeta}}{1+e^{\mathbf{x}^\top \bfbeta}} \\
+ p_i + p_ie^{\mathbf{x}^\top \bfbeta} &= e^{\mathbf{x}^\top \bfbeta} \\
+ p_i &= e^{\mathbf{x}^\top \bfbeta}(1-p_i) \\
+ \frac{p_i}{1-p_i} &= e^{\mathbf{x}^\top \bfbeta}\\
+ \log\left(\frac{p_i}{1-p_i}\right)  &= \mathbf{x}^\top \bfbeta = \beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7}. \quad \blacksquare
 \end{align*}
 
-ii)
+### (ii)
  
-```{r}
+```{r, fig.width=2.5, fig.height=1.5}
 logReg.prob = predict(logReg, newdata = test , type="response")
 logReg.pred = ifelse(logReg.prob >0.5, "1", "0")
 c=table("predicted" = logReg.pred, "true" = test$diabetes)
-
-library(yardstick)
-library(ggplot2)
 
 cm = conf_mat(c)
 
 autoplot(cm, type = "heatmap") + ggtitle("Confusion table Logistic Regression")
 ```
 
-From the table above we find $\text{sensitivity} = \frac{48}{77} = 0.623$, and $\text{specificity} = \frac{137}{155}=0.884$.
+From the table above we find $\text{sensitivity} = \frac{48}{29+48} = \frac{48}{77} = 0.623$, and $\text{specificity} = \frac{137}{137+18} = \frac{137}{155}=0.884$.
 
 
 
 ## b)
 
-(i) $\pi_k$ is the prior probability for class k, i.e $Pr(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random women of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be the mean values of each predictors for a correspondingly diabetic or non diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in LDA assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class, and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
+### (i)
+
+$\pi_k$ is the prior probability for class k, i.e $P(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random woman of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be the mean values of each predictors for a correspondingly diabetic or non-diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in LDA assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class, and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
 
 
+### (ii)
 
-(ii)
-
-```{r}
-library(MASS)
+```{r, fig.width=2.5, fig.height=1.5}
 
 lda.model = lda(diabetes~., data=train)
 qda.model = qda(diabetes~., data=train)
@@ -421,25 +429,27 @@ autoplot(cml, type = "heatmap") + ggtitle("Confusion table LDA")
 autoplot(cmq, type = "heatmap") + ggtitle("Confusion table QDA")
 ```
 
-The difference between LDA and QDA models, is that in LDA, one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary (discriminant function: $$\delta_k(\bf{x}) = {\bf x}^T \boldsymbol{\Sigma}^{-1}\boldsymbol\mu_k - \frac{1}{2}\boldsymbol\mu_k^T \boldsymbol{\Sigma}^{-1}\boldsymbol\mu_k + \log \pi_k$$). In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary ($\delta_k(\bf{x}) = -\frac{1}{2}\bf{x}^T\boldsymbol{\Sigma_k}^{-1}\bf{x} + {\bf x}^T \boldsymbol{\Sigma_k}^{-1}\boldsymbol\mu_k - \frac{1}{2}\boldsymbol\mu_k^T \boldsymbol{\Sigma_k}^{-1}\boldsymbol\mu_k - \frac{1}{2}\log|\boldsymbol{\Sigma_k}| + \log \pi_k$).
+The difference between LDA and QDA models, is that in LDA, one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary (discriminant function): $$\delta_k(\mathbf{x}) = {\mathbf{x}}^\top \boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}_k - \frac{1}{2}\boldsymbol{\mu}_k^\top \boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}_k + \log \pi_k.$$ In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary $$\delta_k(\mathbf{x}) = -\frac{1}{2}\mathbf{x}^\top\boldsymbol{\Sigma}_k^{-1}\mathbf{x} + {\mathbf x}^\top \boldsymbol{\Sigma}_k^{-1}\boldsymbol{\mu}_k - \frac{1}{2}\boldsymbol\mu_k^\top \boldsymbol{\Sigma}_k^{-1}\boldsymbol\mu_k - \frac{1}{2}\log|\boldsymbol{\Sigma}_k| + \log \pi_k.$$
 
 ## c)
 
-i) When classifying a new observation in the KNN approach, one first identifies the $k$ nearest points in the training data, measured in the euclidean metric. Then the observation is classified to the majority class amongst those $k$ nearest points, i.e. classified to the class with the highest proportion of members among the $k$ points in question. 
+### (i)
+When classifying a new observation in the KNN approach, one first identifies the $k$ nearest points in the training data, measured in the euclidean metric. Then the observation is classified to the majority class amongst those $k$ nearest points, i.e. classified to the class with the highest proportion of members among the $k$ points in question. 
 
-ii) The tuning parameter $k$ can be chosen by looking at the test error (CV-error, if using cross-validation) for a range of different values of $k$.Then choose the value that gives the lowest error. 
+### (ii)
+The tuning parameter $k$ can be chosen by looking at the test error (CV-error, if using cross-validation) for a range of different values of $k$. Then choose the value that gives the lowest error. 
 
-iii)
+### (iii)
 
-```{r}
-library(class)
+```{r, fig.width=3, fig.height=1.5}
 knnMod = knn(train = train, test = test, cl = train$diabetes, k = 25, prob = T)
 kc = table(knnMod, test$diabetes)
 
 cmk = conf_mat(kc)
 autoplot(cmk, type = "heatmap") + ggtitle("Confusion table KNN, k = 25")
 ```
-Sensitivity $= \frac{41}{77} =  0.532$, specificity $= \frac{144}{155} = 0.929$.
+
+We then get: Sensitivity $= \frac{41}{36+41} = \frac{41}{77} = 0.532$ and specificity $= \frac{144}{144+11} = \frac{144}{155} = 0.929$.
 
 ## d)
 
@@ -448,19 +458,18 @@ Sensitivity $= \frac{41}{77} =  0.532$, specificity $= \frac{144}{155} = 0.929$.
 knnModProb = attributes(knnMod)$prob
 knnModProb = ifelse(knnMod == 0, 1 - knnModProb,knnModProb)
 
-
-library(pROC)
-#library(plotROC)
-library(ggplot2)
-
 glmroc = roc(response = test$diabetes, predictor = logReg.prob)
 ldaroc = roc(response = test$diabetes, predictor = lda.modelProb[,2])
 qdaroc = roc(response = test$diabetes, predictor = qda.modelProb[,2])
 knnroc = roc(response = test$diabetes, predictor = knnModProb)
 
-dat = data.frame(diabetes = test$diabetes, glm = logReg.prob, lda = lda.modelProb[,2], qda = qda.modelProb[,2], knn = knnModProb)
+dat = data.frame(diabetes = test$diabetes, glm = logReg.prob, lda = lda.modelProb[,2],
+                 qda = qda.modelProb[,2], knn = knnModProb)
 dat_long = melt_roc(dat, "diabetes", c("glm", "lda", "qda", "knn"))
-ggplot(dat_long, aes(d = D, m = M, color = name)) + geom_roc(n.cuts=F,size=0.5) + xlab("1-Specificity") + ylab("Sensitivity")
+ggplot(dat_long, aes(d = D, m = M, color = name)) +
+  geom_roc(n.cuts=F,size=0.5) +
+  xlab("1-Specificity") +
+  ylab("Sensitivity")
 
 auc(glmroc)
 auc(ldaroc)
@@ -473,7 +482,7 @@ We observe that the LDA model has the highest AUC value, $0.849$, followed by th
 # Problem 4
 
 ## a)
-We wish to show that for the linear regression model $Y = X \beta + \varepsilon$, the LOOCV statistic is given by
+We wish to show that for the linear regression model, the LOOCV statistic is given by
 $$
   \mathrm{CV} = \frac{1}{N} \sum_{i=1}^N \left( \frac{y_i - \hat{y}_i}{1 - h_i} \right)^2,
 $$
@@ -538,7 +547,7 @@ The $R^2$-value is: `r summary(bodyfat_lm)$r.squared`
 
 ## b)
 
-## (i)
+### (i)
 ```{r, echo=TRUE, eval=TRUE}
 bootstrap_R2 <- function(data, n_samples) {
   
@@ -558,20 +567,20 @@ n_bootstrap_samples <- 1000
 r2_values <- bootstrap_R2(d.bodyfat, 1000)
 ```
 
-## (ii)
+### (ii)
 ```{r, echo=TRUE, eval=TRUE}
 hist(r2_values, breaks = 20)
 ```
 
-## (iii)
+### (iii)
 ```{r, echo=TRUE, eval=TRUE}
 est_mean <- mean(r2_values)
 rse <- (sum((est_mean - r2_values)^2)/(n_bootstrap_samples-1))^0.5
 ```
 
 The estimated mean is: `r est_mean` and residual standard error is: `r rse`.
-A 95% confidence interval is therefore: [`r est_mean-2*rse`, `r est_mean+2*rse`]
+A 95% confidence interval is therefore: [`r est_mean-2*rse`, `r est_mean+2*rse`].
 
-## (iv)
+### (iv)
 
-We see that the fraction of variance explained by the model is estimated to be: `r est_mean` and that there is a 95% probability that the true fraction of variance explained by the model lies in the interval [`r est_mean-2*rse`, `r est_mean+2*rse`]
+We see that the fraction of variance explained by the model is estimated to be: `r est_mean` and that there is a 95% probability that the true fraction of variance explained by the model lies in the interval [`r est_mean-2*rse`, `r est_mean+2*rse`]. Note that the $R^2$ value from a) falls within this interval.
