@@ -6,3 +6,12 @@ MASS
 class
 pROC
 plotROC
+magrittr
+dplyr
+tidyverse
+tibble
+tidyr
+readr
+purrr
+stringr
+forcats
