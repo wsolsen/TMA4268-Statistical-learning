@@ -253,7 +253,7 @@ From the table above we find $\text{sensitivity} = \frac{48}{77} = 0.623$, and $
 
 ## b)
 
-(i) $\pi_k$ is the prior probability for class k, i.e $Pr(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random person of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be the mean values of each predictors for a correspondingly diabetic or non diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in lda assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class, and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
+(i) $\pi_k$ is the prior probability for class k, i.e $Pr(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random women of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be the mean values of each predictors for a correspondingly diabetic or non diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in LDA assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class, and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
 
 
 
@@ -261,48 +261,55 @@ From the table above we find $\text{sensitivity} = \frac{48}{77} = 0.623$, and $
 
 ```{r}
 library(MASS)
+
 lda.model = lda(diabetes~., data=train)
 qda.model = qda(diabetes~., data=train)
 
 lda.modelProb = predict(lda.model, newdata = test)$posterior
 lda.modelPred = predict(lda.model, newdata = test)$class
-table(predicted = lda.modelPred, true =test$diabetes)
+lc = table(predicted = lda.modelPred, true =test$diabetes)
 
 qda.modelProb = predict(qda.model, newdata = test)$posterior
 qda.modelPred = predict(qda.model, newdata = test)$class
-table(predicted= qda.modelPred,true= test$diabetes)
+qc = table(predicted= qda.modelPred,true= test$diabetes)
 
-#lda.model
+cml = conf_mat(lc)
+cmq = conf_mat(qc)
 
+autoplot(cml, type = "heatmap") + ggtitle("Confusion table LDA")
+autoplot(cmq, type = "heatmap") + ggtitle("Confusion table QDA")
 ```
 
-The difference between LDA and QDA models, is that in LDA one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary. In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary.
+The difference between LDA and QDA models, is that in LDA, one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary (discriminant function: $$\delta_k(\bf{x}) = {\bf x}^T \boldsymbol{\Sigma}^{-1}\boldsymbol\mu_k - \frac{1}{2}\boldsymbol\mu_k^T \boldsymbol{\Sigma}^{-1}\boldsymbol\mu_k + \log \pi_k$$). In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary ($\delta_k(\bf{x}) = -\frac{1}{2}\bf{x}^T\boldsymbol{\Sigma_k}^{-1}\bf{x} + {\bf x}^T \boldsymbol{\Sigma_k}^{-1}\boldsymbol\mu_k - \frac{1}{2}\boldsymbol\mu_k^T \boldsymbol{\Sigma_k}^{-1}\boldsymbol\mu_k - \frac{1}{2}\log|\boldsymbol{\Sigma_k}| + \log \pi_k$).
 
 ## c)
 
-i) When classifying a new observation in the KNN approach, one first identifies the $K$ nearest points in the training data, measured in the euclidean metric. Then we classify the observation to the majority class amongst those $K$ nearest points, i.e. we assign the observation to the class with the highest proportion of members among the $K$ points in question.
+i) When classifying a new observation in the KNN approach, one first identifies the $k$ nearest points in the training data, measured in the euclidean metric. Then the observation is classified to the majority class amongst those $k$ nearest points, i.e. classified to the class with the highest proportion of members among the $k$ points in question. 
 
-ii) The tuning parameter $k$ can be chosen by looking at the test error for a range of different values of $k$.Then choose the value that gives the lowest error. Can often be useful to combine this with Cross-Validation.
+ii) The tuning parameter $k$ can be chosen by looking at the test error (CV-error, if using cross-validation) for a range of different values of $k$.Then choose the value that gives the lowest error. 
 
 iii)
 
 ```{r}
 library(class)
 knnMod = knn(train = train, test = test, cl = train$diabetes, k = 25, prob = T)
-table(knnMod, test$diabetes)
+kc = table(knnMod, test$diabetes)
+
+cmk = conf_mat(kc)
+autoplot(cmk, type = "heatmap") + ggtitle("Confusion table KNN, k = 25")
 ```
 Sensitivity $= \frac{41}{77} =  0.532$, specificity $= \frac{144}{155} = 0.929$.
 
 ## d)
 
-```{r}
+```{r,fig.cap="\\label{fig:ROC} ROC curve for Logistic Regression, LDA, QDA and KNN, measured on the diabetes data set."}
 
 knnModProb = attributes(knnMod)$prob
 knnModProb = ifelse(knnMod == 0, 1 - knnModProb,knnModProb)
 
 
 library(pROC)
-library(plotROC)
+#library(plotROC)
 library(ggplot2)
 
 glmroc = roc(response = test$diabetes, predictor = logReg.prob)
@@ -312,7 +319,7 @@ knnroc = roc(response = test$diabetes, predictor = knnModProb)
 
 dat = data.frame(diabetes = test$diabetes, glm = logReg.prob, lda = lda.modelProb[,2], qda = qda.modelProb[,2], knn = knnModProb)
 dat_long = melt_roc(dat, "diabetes", c("glm", "lda", "qda", "knn"))
-ggplot(dat_long, aes(d = D, m = M, color = name)) + geom_roc(n.cuts=F) + xlab("1-Specificity") + ylab("Sensitivity")
+ggplot(dat_long, aes(d = D, m = M, color = name)) + geom_roc(n.cuts=F,size=0.5) + xlab("1-Specificity") + ylab("Sensitivity")
 
 auc(glmroc)
 auc(ldaroc)
@@ -320,7 +327,7 @@ auc(qdaroc)
 auc(knnroc)
 ```
 
-We observe that the LDA model has the highest AUC value, $0.849$, followed by the Logistic Regression model, AUC $= 0.8451$. Thus measured in the AUC metric, we would say that LDA performs the best. Since the difference in AUC between Logistic Regression and LDA is relatively small, we would prefer Logistic Regression for interpretability?
+We observe that the LDA model has the highest AUC value, $0.849$, followed by the Logistic Regression model, AUC $= 0.8451$. Thus measured in the AUC metric, we would say that LDA performs the best. Since the difference in AUC value between Logistic Regression and LDA is relatively small, we would prefer Logistic Regression for interpretability.
 
 # Problem 4
 
