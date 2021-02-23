@@ -196,7 +196,7 @@ ggplot(dfAll) +
   scale_color_manual(values = cols)
 ```
 
-
+\pagebreak
 
 # Problem 2
 
@@ -208,7 +208,7 @@ d.corona <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download",
 ```
 ## a) 
 
-The number of deceased and non-deceased:
+The number of deceased and non-deceased is calculated through a group by function on deceased followed by a count aggregate. We see that the number of deceased is 105 and the number of non-deceased is 1905.
 
 ```{r, echo=TRUE, eval=TRUE}
 deceased_count <- d.corona %>%
@@ -217,11 +217,11 @@ deceased_count <- d.corona %>%
     c("count"="n()")
   )
 
-table(deceased_count)
+print(deceased_count)
 ```
 
 
-For each country the number of males and females:
+For each country the number of males and females is calculated through a group by function on country and sex, followed by a count aggregate. We see that there is no major overrepresentation of either males or females in any country.
 
 ```{r, echo=TRUE, eval=TRUE}
 country_count_sex <- d.corona %>%
@@ -229,11 +229,11 @@ country_count_sex <- d.corona %>%
   summarise(n()) %>%
   pivot_wider(names_from = sex, values_from = `n()`)
 
-table(country_count_sex)
+print(country_count_sex)
 ```
 
 
-The number of deceased and non-deceased for each sex:
+The number of deceased and non-deceased for each sex is calculated through a group by function on deceased and sex, followed by a count aggregate. We see that the fraction of deceased is higher amongst males than females in the sample.
 
 ```{r, echo=TRUE, eval=TRUE}
 sex_count_deceased <- d.corona %>%
@@ -244,11 +244,11 @@ sex_count_deceased <- d.corona %>%
     c("non-deceased"='0', "deceased"='1')
   )
 
-table(sex_count_deceased)
+print(sex_count_deceased)
 ```
 
 
-The number of deceased and non-deceased in France, separate for each sex:
+The number of deceased and non-deceased in France, separate for each sex, is calculated through first filtering out all rows which do not report on citizens of France, then grouping on deceased and sex followed by a count aggregate. We see again that the fraction of deceased is higher amongst males than females in the sample, also when confined to the samples of citizens of France.
 
 ```{r, echo=TRUE, eval=TRUE}
 sex_count_deceased_france <- d.corona %>% 
@@ -260,7 +260,7 @@ sex_count_deceased_france <- d.corona %>%
     c("non-deceased"='0', "deceased"='1')
   )
 
-table(sex_count_deceased_france)
+print(sex_count_deceased_france)
 ```
 
 ## b)
@@ -548,6 +548,8 @@ The $R^2$-value is: `r summary(bodyfat_lm)$r.squared`
 ## b)
 
 ### (i)
+An implementation of bootstrapping 1000 $R^2$-values by using samples from the bodyfat dataset:
+
 ```{r, echo=TRUE, eval=TRUE}
 bootstrap_R2 <- function(data, n_samples) {
   
@@ -568,6 +570,7 @@ r2_values <- bootstrap_R2(d.bodyfat, 1000)
 ```
 
 ### (ii)
+A histogram of the $R^2$ values sampled:
 ```{r, echo=TRUE, eval=TRUE}
 hist(r2_values, breaks = 20)
 ```
