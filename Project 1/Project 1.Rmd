@@ -374,14 +374,14 @@ summary(logReg)
 
 ### (i) 
 
-For simplicity we write $\beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} = \mathbf{x}^\top \bfbeta$, where $\bfbeta = (\beta_0 \Hquad \cdots \Hquad \beta_7)^\top$ and $\mathbf{x} = (1\Hquad x_1 \Hquad \cdots \Hquad  x_7 )^\top$. Furthermore let $P(y_i = 1| \mathbf{X}={\mathbf{x}}_i) = p_i$. Starting from the expression for $p_i$ we get
+For simplicity we write $\beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} = \mathbf{x_i}^\top \bfbeta$, where $\bfbeta = (\beta_0 \Hquad \cdots \Hquad \beta_7)^\top$ and $\mathbf{x_i} = (1\Hquad x_{i1} \Hquad \cdots \Hquad  x_{i7} )^\top$. Furthermore let $P(y_i = 1| \mathbf{X}={\mathbf{x}}_i) = p_i$. Starting from the expression for $p_i$ we get
 
 \begin{align*}
- p_i &= \frac{e^{\mathbf{x}^\top \bfbeta}}{1+e^{\mathbf{x}^\top \bfbeta}} \\
- p_i + p_ie^{\mathbf{x}^\top \bfbeta} &= e^{\mathbf{x}^\top \bfbeta} \\
- p_i &= e^{\mathbf{x}^\top \bfbeta}(1-p_i) \\
- \frac{p_i}{1-p_i} &= e^{\mathbf{x}^\top \bfbeta}\\
- \log\left(\frac{p_i}{1-p_i}\right)  &= \mathbf{x}^\top \bfbeta = \beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7}. \quad \blacksquare
+ p_i &= \frac{e^{\mathbf{x_i}^\top \bfbeta}}{1+e^{\mathbf{x_i}^\top \bfbeta}} \\
+ p_i + p_ie^{\mathbf{x_i}^\top \bfbeta} &= e^{\mathbf{x_i}^\top \bfbeta} \\
+ p_i &= e^{\mathbf{x_i}^\top \bfbeta}(1-p_i) \\
+ \frac{p_i}{1-p_i} &= e^{\mathbf{x_i}^\top \bfbeta}\\
+ \log\left(\frac{p_i}{1-p_i}\right)  &= \mathbf{x_i}^\top \bfbeta = \beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7}. \quad \blacksquare
 \end{align*}
 
 ### (ii)
