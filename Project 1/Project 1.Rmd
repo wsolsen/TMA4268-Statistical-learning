@@ -305,10 +305,10 @@ The estimated coefficient of age is `r deceased_logit$coefficients[3]` and it is
 
 ### (i)
 
-To answer the question we fit a model using covariates: sex, age and the interaction sex * age.
+To answer the question we fit a model using covariates: country, sex, age and the interaction sex * age.
 
 ```{r, echo=TRUE, eval=TRUE}
-deceased_sex_age_logit=glm(deceased~sex*age, data=d.corona, family=binomial)
+deceased_sex_age_logit=glm(deceased~sex*age+country, data=d.corona, family=binomial)
 summary(deceased_sex_age_logit)
 ```
 
@@ -316,10 +316,10 @@ We see that the p-value of the coefficient sexmale:age has a very high p-value. 
 
 ### (ii)
 
-To answer the question we fit a model using covariates: country, age and the interaction country * age. It should not matter that data for Japan and Korea are used in the fitting of the model, as they will not affect the coefficients we are interested in.
+To answer the question we fit a model using covariates: sex, country, age and the interaction country * age. It should not matter that data for Japan and Korea are used in the fitting of the model, as they will not affect the coefficients we are interested in.
 
 ```{r, echo=TRUE, eval=TRUE}
-deceased_country_age_logit=glm(deceased~country*age, data=d.corona, family=binomial)
+deceased_country_age_logit=glm(deceased~country*age+sex, data=d.corona, family=binomial)
 summary(deceased_country_age_logit)
 ```
 
@@ -582,8 +582,8 @@ rse <- (sum((est_mean - r2_values)^2)/(n_bootstrap_samples-1))^0.5
 ```
 
 The estimated mean is: `r est_mean` and residual standard error is: `r rse`.
-A 95% confidence interval is therefore: [`r est_mean-2*rse`, `r est_mean+2*rse`].
+A 95% confidence interval is therefore: [`r est_mean-1.96*rse`, `r est_mean+1.96*rse`].
 
 ### (iv)
 
-We see that the fraction of variance explained by the model is estimated to be: `r est_mean` and that there is a 95% probability that the true fraction of variance explained by the model lies in the interval [`r est_mean-2*rse`, `r est_mean+2*rse`]. Note that the $R^2$ value from a) falls within this interval.
+We see that the fraction of variance explained by the model is estimated to be: `r summary(bodyfat_lm)$r.squared`. We have used bootstrapping to find the standard error to be `r rse`. The point estimate of $R^2$ is therefore uncertain. With 95% probability we have estimated that the fraction of variance explained by the model will lie in the interval [`r est_mean-1.96*rse`, `r est_mean+1.96*rse`].
