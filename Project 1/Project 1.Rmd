@@ -385,15 +385,15 @@ For simplicity we write $\beta_0 + \beta_1x_{i1}  + \dots + \beta_7 x_{i7} = \ma
 \end{align*}
 
 ### (ii)
- 
-```{r, fig.width=2.5, fig.height=1.5}
+
+```{r, fig.width=3.5, fig.height=1.5}
 logReg.prob = predict(logReg, newdata = test , type="response")
 logReg.pred = ifelse(logReg.prob >0.5, "1", "0")
 c=table("predicted" = logReg.pred, "true" = test$diabetes)
 
 cm = conf_mat(c)
 
-autoplot(cm, type = "heatmap") + ggtitle("Confusion table Logistic Regression")
+autoplot(cm, type = "heatmap") + ggtitle("Confusion table Logistic Regression") 
 ```
 
 From the table above we find $\text{sensitivity} = \frac{48}{29+48} = \frac{48}{77} = 0.623$, and $\text{specificity} = \frac{137}{137+18} = \frac{137}{155}=0.884$.
@@ -404,7 +404,7 @@ From the table above we find $\text{sensitivity} = \frac{48}{29+48} = \frac{48}{
 
 ### (i)
 
-$\pi_k$ is the prior probability for class k, i.e $P(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random woman of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be the mean values of each predictors for a correspondingly diabetic or non-diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in LDA assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class, and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
+$\pi_k$ is the prior probability for class k, i.e $P(Y=k)$, so for the diabetes problem, $\pi_1$ is the probability for a random woman of having diabetes, while $\pi_0$ is the probability of not having diabetes. $\boldsymbol{\mu}_k$ is the mean vector for each class, so in this case $\mu_1$ and $\mu_0$ will be a vector of the mean values of each predictors for a correspondingly diabetic or non-diabetic person. $\boldsymbol{\Sigma}$ is the covariance matrix between the predictors and is in LDA assumed to be the same for all classes. $f_k(x)$ is the conditional distribution of the predictors of each class (diabetic or non diabetic), and is assumed to be normal distribution, with mean $\boldsymbol{\mu_k}$ and covariance matrix $\boldsymbol{\Sigma}$.
 
 
 ### (ii)
@@ -429,7 +429,7 @@ autoplot(cml, type = "heatmap") + ggtitle("Confusion table LDA")
 autoplot(cmq, type = "heatmap") + ggtitle("Confusion table QDA")
 ```
 
-The difference between LDA and QDA models, is that in LDA, one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary (discriminant function): $$\delta_k(\mathbf{x}) = {\mathbf{x}}^\top \boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}_k - \frac{1}{2}\boldsymbol{\mu}_k^\top \boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}_k + \log \pi_k.$$ In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary $$\delta_k(\mathbf{x}) = -\frac{1}{2}\mathbf{x}^\top\boldsymbol{\Sigma}_k^{-1}\mathbf{x} + {\mathbf x}^\top \boldsymbol{\Sigma}_k^{-1}\boldsymbol{\mu}_k - \frac{1}{2}\boldsymbol\mu_k^\top \boldsymbol{\Sigma}_k^{-1}\boldsymbol\mu_k - \frac{1}{2}\log|\boldsymbol{\Sigma}_k| + \log \pi_k.$$
+The difference between LDA and QDA models, is that in LDA, one assumes that the covariance matrices is the same for all classes ($\Sigma_k = \Sigma$). By cancellations this leads to a linear decision boundary, with discriminant function: $$\delta_k(\mathbf{x}) = {\mathbf{x}}^\top \boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}_k - \frac{1}{2}\boldsymbol{\mu}_k^\top \boldsymbol{\Sigma}^{-1}\boldsymbol{\mu}_k + \log \pi_k.$$ In QDA one does not assume that the covariance matrices is the same for all classes, and thus we do not obtain the same cancellation. This gives us a quadratic decision boundary, with discriminant function: $$\delta_k(\mathbf{x}) = -\frac{1}{2}\mathbf{x}^\top\boldsymbol{\Sigma}_k^{-1}\mathbf{x} + {\mathbf x}^\top \boldsymbol{\Sigma}_k^{-1}\boldsymbol{\mu}_k - \frac{1}{2}\boldsymbol\mu_k^\top \boldsymbol{\Sigma}_k^{-1}\boldsymbol\mu_k - \frac{1}{2}\log|\boldsymbol{\Sigma}_k| + \log \pi_k.$$
 
 ## c)
 
@@ -477,7 +477,7 @@ auc(qdaroc)
 auc(knnroc)
 ```
 
-We observe that the LDA model has the highest AUC value, $0.849$, followed by the Logistic Regression model, AUC $= 0.8451$. Thus measured in the AUC metric, we would say that LDA performs the best. Since the difference in AUC value between Logistic Regression and LDA is relatively small, we would prefer Logistic Regression for interpretability.
+We observe that the LDA model has the highest AUC value, $0.849$, followed by the Logistic Regression model, AUC $= 0.8451$. Thus measured in the AUC metric, we would say that the LDA model performs the best. Since the difference in AUC value between Logistic Regression and LDA is relatively small, we would prefer the Logistic Regression model for interpretability.
 
 # Problem 4
 
