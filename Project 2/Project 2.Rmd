@@ -9,7 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
-knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, message=FALSE, warning=FALSE, strip.white=TRUE, prompt=FALSE, cache=TRUE, size="scriptsize", fig.width=4, fig.height=3)
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, message=FALSE, warning=FALSE, strip.white=TRUE, prompt=FALSE, cache=TRUE, size="scriptsize", fig.width=5, fig.height=4)
 
 # Import packages
 library(magrittr)
@@ -128,16 +128,79 @@ install.packages("gbm")
 
 # Problem 5
 ## a)
+True, False, False, False.
 
+<!-- 
+Kort forklaring:
+i) The second principal component is the direction which maximizes variance among all directions orthogonal to the first.
+ii) Må være standarisert.
+iii) K-means algoritmen finner lokalt og ikke globalt optimum, forskjellige initialverdier kan derfor gi forskjellige løsninger. Bør kjøres flere ganger med forskjellige initialverdier.
+iv) Greien med PCA er å lage en uncorrelated basis.
+-->
 
 ## b)
-### (i)
+In the following we make a random cluster of the data and compute the centroid of the two clusters we get. The clusters are color coded where one cluster is colored red, while the other is green, as seen in Figure \ref{fig:RandomClustering}. Note that the code here is not general for every $K$-mean clustering, but is only applicable to $K=2$, which is the case given in the problem.
+
+```{r K-means clustering random, fig.cap="\\label{fig:RandomClustering}A random clustering of the data being the round points, and the centroids being the square points."}
+set.seed(1)
+
+x1 <- c(1, 2, 0, 4, 5, 6)
+x2 <- c(5, 4, 3, 1, 1, 2)
+X <- matrix(c(x1, x2), ncol = 2)
+
+# Random cluster
+X_cluster <- cbind(X, sample(c(1, 2), size = nrow(X), replace = TRUE))
+
+# Initializing and computing the centroids:
+g1_centroid <- c(0, 0)
+g2_centroid <- c(0, 0)
+
+for(i in 1:length(x1)) {
+  if(X_cluster[i, 3] == 1) {
+    g1_centroid[1] <- g1_centroid[1] + X[i, 1]
+    g1_centroid[2] <- g1_centroid[2] + X[i, 2]
+  }
+  else {
+    g2_centroid[1] <- g2_centroid[1] + X[i, 1]
+    g2_centroid[2] <- g2_centroid[2] + X[i, 2]
+  }
+}
+
+g1_centroid <- g1_centroid / length((X[, 1])[X_cluster[, 3] == 1])
+g2_centroid <- g2_centroid / length((X[, 1])[X_cluster[, 3] == 2])
 
 
-### (ii)
+# Plotting the clusters and centroids color coded:
+plot(X,
+     col = X_cluster[, 3] + 1,
+     main = "Random custering of the data with the centroids",
+     xlab = "x1",
+     ylab = "x2",
+     pch = 20,
+     cex = 2)
+points(g1_centroid[1], g1_centroid[2], pch = 15, cex = 2, col = 2)
+points(g2_centroid[1], g2_centroid[2], pch = 15, cex = 2, col = 3)
+```
 
+We can then measure, using the Euclidean distance, what points are closest to the respective centroids, in this case giving the correct clustering for $K=2$. This is shown in Figure \ref{fig:Clustering}.
 
-### (iii)
+```{r K-means clustering, fig.cap="\\label{fig:Clustering}The $K$-means clustering for the data, with $K=2$."}
+dist <- function(x, y) {
+  return(sqrt(sum((x - y)^2)))
+}
+
+for(i in 1:length(x1)) {
+  X_cluster[i, 3] <- ifelse(dist(g1_centroid, X[i, ]) < dist(g2_centroid, X[i, ]), 1, 2)
+}
+
+plot(X,
+     col = X_cluster[, 3] + 1,
+     main = "K-means custering of the data with K = 2",
+     xlab = "x1",
+     ylab = "x2",
+     pch = 20,
+     cex = 2)
+```
 
 
 ## c)
