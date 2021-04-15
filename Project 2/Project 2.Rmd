@@ -9,7 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
-knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, message=FALSE, warning=FALSE, strip.white=TRUE, prompt=FALSE, cache=TRUE, size="scriptsize", fig.width=4, fig.height=3)
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, message=FALSE, warning=FALSE, strip.white=TRUE, prompt=FALSE, cache=TRUE, size="scriptsize", fig.width=5, fig.height=4)
 
 # Import packages
 library(magrittr)
@@ -19,6 +19,7 @@ library(MASS)
 library(yardstick)
 library(class)
 library(pROC)
+library(e1071)
 ```
 
 \newcommand{\E}{\operatorname{E}}
@@ -27,6 +28,9 @@ library(pROC)
 
 \newcommand{\RR}{\mathbb{R}}
 \newcommand{\bfx}{\mathbf{x}}
+\newcommand{\bfy}{\mathbf{y}}
+\newcommand{\bfh}{\mathbf{h}}
+\newcommand{\bfX}{\mathbf{X}}
 \newcommand{\bfY}{\mathbf{Y}}
 \newcommand{\bfZ}{\mathbf{Z}}
 \newcommand{\bfbeta}{\boldsymbol{\beta}}
@@ -106,38 +110,256 @@ install.packages("gbm")
 
 # Problem 4
 ## a)
+False, True, False, True.
 
+<!-- 
+Kort forklaring:
+i) Dataen vil nok kunne være ikke-separabel.
+ii) En outlier vil kunne ha stor innvirkning på margin.
+iii) If class boundaries are non-linear then SVM is more popular, but kernel versions of logistic regression are also possible, but more computationally expensive (and traditionally less used).
+iv) Big C => big margin => lower variance and bigger bias.
+-->
 
 ## b)
 ### (i)
+A SVM tends to behave better than logistic regression when the classes are well separated, which we would assume them to be here with the genomic data. Also SVM has the ability to work in high dimensional space compared to the small number of samples.
+
+Instead of SVM one could for example use a random forest, $K$-nearest neighbor, linear classifiers, or quadratic classifiers.
 
 
 ### (ii)
+The paper introduces an ensemble SVM-Recursive Feature Elimination for gene selection that follows the concept of ensemble and bagging used in random forest but adopts the backward elimination strategy which is the rationale of Recursive Feature Elimination algorithm.
 
 
 ### (iii)
+In the following code block we fit a support vector classifier with $C=1$ on `Category` using `d.leukemia.train`.
+
+```{r SVC}
+
+set.seed(2399)
+
+# Set-up:
+id <- "1x_E8xnmz9CMHh_tMwIsWP94czPa1Fpsj"  # Google file ID
+path <- "https://docs.google.com/uc?id=%s&export=download"
+d.leukemia <- read.csv(sprintf(path, id), header = TRUE)
+
+t.samples <- sample(1:60, 15, replace = FALSE)
+d.leukemia$Category <- as.factor(d.leukemia$Category)
+d.leukemia.test <- d.leukemia[t.samples, ]
+d.leukemia.train <- d.leukemia[-t.samples, ]
+
+# Support vector classifier:
+svmfit <- svm(Category ~ ., data = d.leukemia.train,
+              kernel = "linear", cost = 1, scale = TRUE)
+pred_train <- predict(svmfit, d.leukemia.train)
+pred_test <- predict(svmfit, d.leukemia.test)
+
+# Confusion tables for training and testing respectively:
+conf_tab_train <- table(predict = pred_train, truth = d.leukemia.train$Category)
+conf_tab_test <- table(predict = pred_test, truth = d.leukemia.test$Category)
+
+# Misclassification for training and testing respectively:
+misclas_train <- 1 - sum(diag(conf_tab_train)) / sum(conf_tab_train)
+misclas_test <- 1 - sum(diag(conf_tab_test)) / sum(conf_tab_test)
+
+```
+
+We then see the confusion table for the training data below, with the misclassification error rate of `r misclas_train`.
+```{r}
+conf_tab_train
+```
+We also have the confusion table for the test data below, with the misclassification error rate of `r misclas_test`.
+```{r}
+conf_tab_test
+```
+
+The training error rate is `r misclas_train`, suggesting that there is an overfitting of the data. This is dependent on the cost $C$, and one could have done a cross validation to find a possibly better cost than $C=1$.
+
+The most common error in the test set is that the truth is relapse, while the prediction is non-relapse. That is, children relapse even though the prediction is that they do not. With a misclassification error rate of `r misclas_test` for the test set the classification can be said to be successful. However, the false positive, which is the most common error, is worse than the false negative in this case, in our opinion.
 
 
 ### (iv)
+In the following code block we fit a support vector machine to the data using the cost $C=1$ and the tuning parameter $\gamma=10^{-2}$ or $\gamma=10^{-5}$.
+
+```{r SVM}
+
+set.seed(2399)
+
+# Support vector machine and prediction:
+svmfit_gamma1 <- svm(Category ~ ., data = d.leukemia.train, kernel = "radial",
+                     cost = 1, gamma = 1e-2, scale = TRUE)
+svmfit_gamma2 <- svm(Category ~ ., data = d.leukemia.train, kernel = "radial",
+                     cost = 1, gamma = 1e-5, scale = TRUE)
+pred_train_gamma1 <- predict(svmfit_gamma1, d.leukemia.train)
+pred_test_gamma1 <- predict(svmfit_gamma1, d.leukemia.test)
+pred_train_gamma2 <- predict(svmfit_gamma2, d.leukemia.train)
+pred_test_gamma2 <- predict(svmfit_gamma2, d.leukemia.test)
+
+# Confusion tables for training and testing:
+conf_tab_train_gamma1 <- table(predict = pred_train_gamma1,
+                               truth = d.leukemia.train$Category)
+conf_tab_test_gamma1 <- table(predict = pred_test_gamma1,
+                              truth = d.leukemia.test$Category)
+conf_tab_train_gamma2 <- table(predict = pred_train_gamma2,
+                               truth = d.leukemia.train$Category)
+conf_tab_test_gamma2 <- table(predict = pred_test_gamma2,
+                              truth = d.leukemia.test$Category)
+
+# Misclassification for training and testing:
+misclas_train_gamma1 <- 1 - sum(diag(conf_tab_train_gamma1)) / sum(conf_tab_train_gamma1)
+misclas_test_gamma1 <- 1 - sum(diag(conf_tab_test_gamma1)) / sum(conf_tab_test_gamma1)
+misclas_train_gamma2 <- 1 - sum(diag(conf_tab_train_gamma2)) / sum(conf_tab_train_gamma2)
+misclas_test_gamma2 <- 1 - sum(diag(conf_tab_test_gamma2)) / sum(conf_tab_test_gamma2)
+
+```
+
+We then see the confusion table for the training data for $\gamma = 10^{-2}$ below, with the misclassification error rate of `r misclas_train_gamma1`.
+```{r}
+conf_tab_train_gamma1
+```
+We also have the confusion table for the test data for $\gamma = 10^{-2}$ below, with the misclassification error rate of `r misclas_test_gamma1`.
+```{r}
+conf_tab_test_gamma1
+```
+
+For $\gamma = 10^{-5}$ er have the confusion table for the training data below, with the misclassification error rate of `r misclas_train_gamma2`.
+```{r}
+conf_tab_train_gamma2
+```
+We also have the confusion table for the test data for $\gamma = 10^{-5}$ below, with the misclassification error rate of `r misclas_test_gamma2`.
+```{r}
+conf_tab_test_gamma2
+```
+
+We note that the misclassification error rate for the training set is `r misclas_train_gamma1` for $\gamma = 10^{-2}$ and `r misclas_train_gamma2` for $\gamma = 10^{-5}$. This can be explained by the fact that for small $\gamma$ the decision boundaries are smoother than for larger $\gamma$. Thus, there may be some overfitting for $\gamma = 10^{-2}$. For the test data however, the results are the same. Comparing to the case in (iii), the results are worse, suggesting that the support vector classifier is better than the support vector machine for this dataset.
+
 
 
 ## c)
-
+The polynomial kernel of positive integer degree $d$ has the form
+$$
+  K(\bfx, \bfy) = (1 + \bfx^\top \bfy)^d = \left( 1 + \sum_{i=1}^p x_{i} y_{i} \right)^d,
+$$
+for $\bfx, \bfy \in \RR^p$, with elements $x_i$ and $y_i$ for $i=1,\dots,p$. We assume $d=2$ and $\bfx, \bfy \in \RR^2$, such that
+\begin{align*}
+  K(\bfx, \bfy) &= (1 + \bfx^\top \bfy)^2 = 1 + 2 \bfx^\top \bfy + (\bfx^\top \bfy)^2 = 1 + 2 (x_1 y_1 + x_2 y_2) + (x_1 y_1 + x_2 y_2)^2
+  \\
+  &= 1 + 2 x_1 y_1 + 2 x_2 y_2 + x_1^2 y_1^2 + x_2^2 y_2^2 + 2 x_1 y_1 x_2 y_2.
+\end{align*}
+We then see that
+$$
+  K(\bfx, \bfy) = \bfh(\bfx)^\top \bfh(\bfy) = \left< \bfh(\bfx), \bfh(\bfy) \right>,
+$$
+by the basic definition of the inner product of two vectors, where,
+$$
+  \bfh(\bfx) =
+  \begin{bmatrix}
+    1
+    \\
+    \sqrt{2} x_1
+    \\
+    \sqrt{2} x_2
+    \\
+    x_1^2
+    \\
+    x_2^2
+    \\
+    \sqrt{2} x_1 x_2
+  \end{bmatrix}
+  \quad \text{and} \quad
+  \bfh(\bfy) =
+  \begin{bmatrix}
+    1
+    \\
+    \sqrt{2} y_1
+    \\
+    \sqrt{2} y_2
+    \\
+    y_1^2
+    \\
+    y_2^2
+    \\
+    \sqrt{2} y_1 y_2
+  \end{bmatrix}.
+$$
 
 
 
 # Problem 5
 ## a)
+True, False, False, False.
 
+<!-- 
+Kort forklaring:
+i) The second principal component is the direction which maximizes variance among all directions orthogonal to the first.
+ii) Må være standarisert.
+iii) K-means algoritmen finner lokalt og ikke globalt optimum, forskjellige initialverdier kan derfor gi forskjellige løsninger. Bør kjøres flere ganger med forskjellige initialverdier.
+iv) Greien med PCA er å lage en uncorrelated basis.
+-->
 
 ## b)
-### (i)
+In the following we make a random cluster of the data and compute the centroid of the two clusters we get. The clusters are color coded where one cluster is colored red, while the other is green, as seen in Figure \ref{fig:RandomClustering}. Note that the code here is not general for every $K$-mean clustering, but is only applicable to $K=2$, which is the case given in the problem.
+
+```{r K-means clustering random, fig.cap="\\label{fig:RandomClustering}A random clustering of the data being the round points, and the centroids being the square points."}
+set.seed(1)
+
+x1 <- c(1, 2, 0, 4, 5, 6)
+x2 <- c(5, 4, 3, 1, 1, 2)
+X <- matrix(c(x1, x2), ncol = 2)
+
+# Random cluster
+X_cluster <- cbind(X, sample(c(1, 2), size = nrow(X), replace = TRUE))
+
+# Initializing and computing the centroids:
+g1_centroid <- c(0, 0)
+g2_centroid <- c(0, 0)
+
+for(i in 1:length(x1)) {
+  if(X_cluster[i, 3] == 1) {
+    g1_centroid[1] <- g1_centroid[1] + X[i, 1]
+    g1_centroid[2] <- g1_centroid[2] + X[i, 2]
+  }
+  else {
+    g2_centroid[1] <- g2_centroid[1] + X[i, 1]
+    g2_centroid[2] <- g2_centroid[2] + X[i, 2]
+  }
+}
+
+g1_centroid <- g1_centroid / length((X[, 1])[X_cluster[, 3] == 1])
+g2_centroid <- g2_centroid / length((X[, 1])[X_cluster[, 3] == 2])
 
 
-### (ii)
+# Plotting the clusters and centroids color coded:
+plot(X,
+     col = X_cluster[, 3] + 1,
+     main = "Random custering of the data with the centroids",
+     xlab = "x1",
+     ylab = "x2",
+     pch = 20,
+     cex = 2)
+points(g1_centroid[1], g1_centroid[2], pch = 15, cex = 2, col = 2)
+points(g2_centroid[1], g2_centroid[2], pch = 15, cex = 2, col = 3)
+```
 
+We can then measure, using the Euclidean distance, what points are closest to the respective centroids, in this case giving the correct clustering for $K=2$. This is shown in Figure \ref{fig:Clustering}.
 
-### (iii)
+```{r K-means clustering, fig.cap="\\label{fig:Clustering}The $K$-means clustering for the data, with $K=2$."}
+dist <- function(x, y) {
+  return(sqrt(sum((x - y)^2)))
+}
+
+for(i in 1:length(x1)) {
+  X_cluster[i, 3] <- ifelse(dist(g1_centroid, X[i, ]) < dist(g2_centroid, X[i, ]), 1, 2)
+}
+
+plot(X,
+     col = X_cluster[, 3] + 1,
+     main = "K-means custering of the data with K = 2",
+     xlab = "x1",
+     ylab = "x2",
+     pch = 20,
+     cex = 2)
+```
 
 
 ## c)
