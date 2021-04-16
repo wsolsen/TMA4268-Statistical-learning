@@ -23,6 +23,8 @@ library(e1071)
 library(leaps)
 library(ggplot2)
 library(glmnet)
+library(tree)
+library(randomForest)
 ```
 
 \newcommand{\E}{\operatorname{E}}
@@ -313,6 +315,7 @@ We see a clear improvement in going from a 1st degree polynomial to a 2nd degree
 
 # Problem 3
 ## a)
+True, True, False, False
 
 
 ## b)
@@ -321,11 +324,60 @@ We see a clear improvement in going from a 1st degree polynomial to a 2nd degree
 ## c)
 ### (i)
 
+```{r}
+id <- "1Fv6xwKLSZHldRAC1MrcK2mzdOYnbgv0E" # google file ID
+d.diabetes <- dget(sprintf("https://docs.google.com/uc?id=%s&export=download", id))
+
+d.train=d.diabetes$ctrain
+d.train$diabetes = as.factor(d.train$diabetes)
+
+d.test=d.diabetes$ctest
+d.test$diabetes = as.factor(d.test$diabetes)
+```
+
+
+```{r,fig.width=4,fig.height=4}
+
+set.seed(1)
+t.diabetes = tree(diabetes~.,data = d.train) 
+
+t.diabetes.pred = predict(t.diabetes,d.test, type="class")
+misclass = table(t.diabetes.pred, d.test$diabetes)
+misclass
+1-sum(diag(misclass)/sum(misclass))
+
+cv.diabetes = cv.tree(t.diabetes, FUN = prune.misclass, K=10) 
+cv.diabetes
+plot(cv.diabetes$size,cv.diabetes$dev,type="b",xlab="Terminal nodes")
+
+prune.diabetes = prune.misclass(t.diabetes, best = 3)
+#plot(prune.diabetes)
+#text(prune.diabetes, pretty = 1)
+
+prune.diabetes.pred = predict(prune.diabetes,d.test, type="class")
+misclass.prune = table(prune.diabetes.pred, d.test$diabetes)
+misclass.prune
+1-sum(diag(misclass.prune)/sum(misclass.prune))
+```
 
 ### (ii)
 
+```{r}
+library(randomForest)
+set.seed(1)
+rf.diabetes = randomForest(diabetes~.,data=d.train,ntree=1000,mtry=3,importance=TRUE)
 
+rf.diabetes.pred = predict(rf.diabetes,d.test, type="class")
+misclass.rf = table(rf.diabetes.pred,d.test$diabetes)
+misclass.rf
+1-sum(diag(misclass.rf)/sum(misclass.rf))
 
+rf.diabetes
+importance(rf.diabetes)
+varImpPlot(rf.diabetes)
+```
+
+We use the more advanced method Random Forest, with the tuning parameters ntree=1000, and mtry=3. From the importance plots we observe that glu and bmi is the most influential variables in the prediction of diabetes.
 
 # Problem 4
 ## a)
@@ -581,15 +633,74 @@ plot(X,
 ```
 
 
+```{r, eval = T}
+id <- "1VfVCQvWt121UN39NXZ4aR9Dmsbj-p9OU" # google file ID
+GeneData <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),header=F)
+colnames(GeneData)[1:20] = paste(rep("H", 20), c(1:20), sep = "")
+colnames(GeneData)[21:40] = paste(rep("D", 20), c(1:20), sep = "")
+row.names(GeneData) = paste(rep("G", 1000), c(1:1000), sep = "")
+GeneData = t(GeneData)
+GeneData <- scale(GeneData)
+dim(GeneData)
+```
+
 ## c)
 
+```{r,eval = T, echo=F,fig.width=11,fig.height=7,out.width="100%"}
+par(mfrow=c(2,3))
+gene.dist.ec = stats::dist(GeneData, method = "euclidean")
+
+gene.dist.corr = as.dist(1-cor(t(GeneData)))
+
+hc.Gene.EcC = hclust(gene.dist.ec,method="complete")
+hc.Gene.EcS = hclust(gene.dist.ec,method="single")
+hc.Gene.EcA = hclust(gene.dist.ec,method="average")
+
+hc.Gene.CorrC = hclust(gene.dist.corr,method="complete")
+hc.Gene.CorrS = hclust(gene.dist.corr,method="single")
+hc.Gene.CorrA = hclust(gene.dist.corr,method="average")
+
+plot(hc.Gene.EcC, main="Complete Linkage",xlab="",ylab="",sub="Euclidean distance")
+plot(hc.Gene.EcS, main="Single Linkage",xlab="",ylab="",sub="Euclidean distance")
+plot(hc.Gene.EcA, main="Average Linkage",xlab="",ylab="",sub="Euclidean distance")
+plot(hc.Gene.CorrC, main="Complete Linkage",xlab="",ylab="",sub="Correlation distance")
+plot(hc.Gene.CorrS, main="Single Linkage",xlab="",ylab="",sub="Correlation distance")
+plot(hc.Gene.CorrA, main="Average Linkage",xlab="",ylab="",sub="Correlation distance")
+```
 
 ## d)
 
+```{r}
+cutree(hc.Gene.EcC,2)
+cutree(hc.Gene.EcS,2)
+cutree(hc.Gene.EcA,2)
+
+cutree(hc.Gene.CorrC,2)
+cutree(hc.Gene.CorrS,2)
+cutree(hc.Gene.CorrA,2)
+
+```
 
 ## e)
 ### (i)
 
+```{r,fig.width=9,fig.height=9}
+pc.Gene = prcomp(GeneData)
+summary(pc.Gene)
+cols = c(rep("green",20),rep("red",20))
+
+
+plot(pc.Gene$x[,1:2],col=cols)
+
+GeneLoad = pc.Gene$rotation[,1:2]
+informative_loadings = rbind(
+  head(GeneLoad[order(GeneLoad[,1], decreasing = TRUE),]),
+  head(GeneLoad[order(GeneLoad[,2], decreasing = TRUE),])
+  )
+biplot(x=pc.Gene$x[,1:2],y=informative_loadings,scale=0)
+
+tail(sort(abs(pc.Gene$rotation[,1])),10)
+```
 
 ### (ii)
 
