@@ -20,6 +20,9 @@ library(yardstick)
 library(class)
 library(pROC)
 library(e1071)
+library(leaps)
+library(ggplot2)
+library(glmnet)
 ```
 
 \newcommand{\E}{\operatorname{E}}
@@ -58,39 +61,255 @@ install.packages("gbm")
 # Problem 1
 ## a)
 
+TRUE, TRUE, TRUE, FALSE
 
 ## b)
 
+Read the file:
+```{r, echo=TRUE, eval=TRUE}
+id <- "1iI6YaqgG0QJW5onZ_GTBsCvpKPExF30G" # google file ID
+catdat <- read.csv(sprintf("https://docs.google.com/uc?id=%s&export=download", id),
+                   header = T)
+```
+
+Check if the dataset contains any Nans or infinite values:
+```{r, echo=TRUE, eval=TRUE}
+# Check if data contains Nans
+any(apply(catdat, 2, function(x) any(is.na(x))))
+any(apply(catdat, 2, function(x) any(is.infinite(x))))
+```
+
+We proceed by splitting the data into training and test sets. Afterwards we use regsubsets to search for the best subset models. To be able to decide which model is the best we look at three different model selection criteria: adjusted-$R^2$, Mallows' Cp and BIC. The plot shows these model selection criteria as a function of the number of features. 
+
+The red dot indicates the best value of the respective model selection criterion. We see that according to the BIC a model with 6 features is preferred, while Cp and adjusted-$R^2$ do well for 6 features, but even better for higher number of features. To gain robustness in the model we select a model with 6 parameters.
+
+```{r, echo=TRUE, eval=TRUE,fig.width=6, fig.height=4}
+
+# Split data set into train and test
+set.seed(4268)
+train.ind = sample(1:nrow(catdat), 0.5 * nrow(catdat))
+catdat.train = catdat[train.ind, ]
+catdat.test = catdat[-train.ind, ]
+
+# Fit many models in search for best subset models
+regfit.full = regsubsets(birds ~ . , catdat.train, nvmax=16)
+
+# Extract indices for best min and max values of errors
+adjr2_max <- which.max(summary(regfit.full)$adjr2)
+cp_min <- which.min(summary(regfit.full)$cp)
+bic_min <- which.min(summary(regfit.full)$bic)
+
+# Plot 
+par(mfrow=c(2,2), mar=c(5.1,4.1,1,1))
+plot(summary(regfit.full)$rss, xlab="Number of Features", ylab="RSS", type="l")
+plot(summary(regfit.full)$adjr2, xlab="Number of Features", ylab="Adjusted RSq", type="l")
+points(adjr2_max, summary(regfit.full)$adjr2[adjr2_max], col="red" , cex=2 , pch=20)
+plot(summary(regfit.full)$cp, xlab="Number of Features", ylab="Cp", type="l")
+points(cp_min, summary(regfit.full)$cp[cp_min], col="red" , cex=2 , pch=20)
+plot(summary(regfit.full)$bic, xlab="Number of Features", ylab="BIC", type="l")
+points(bic_min, summary(regfit.full)$bic[bic_min], col="red" , cex=2 , pch=20)
+```
+
+For a linear model with six features we find the six best feautres by reading off the regsubsets-summary. The features chosen are: wetfood, daily.playtime, children.13, urban, bell and daily.outdoortime. From the understanding of the domain, the selected features all seem reasonable with respect to having predictive power. We check the model qualitatively by plotting predicted values for the training set and test set against the response in the two plots below. We see that the model performs well.
+
+```{r, echo=TRUE, eval=TRUE,fig.width=6, fig.height=4}
+# Fit model with 6 parameters
+lm_6 = lm(birds ~ wetfood+daily.playtime+children.13+urban+bell+daily.outdoortime, catdat.train)
+
+# Predict and calculate MSE
+lm_birds_hat <- predict(lm_6, catdat.test[c("wetfood", "daily.playtime", "children.13", "urban", "bell", "daily.outdoortime")])
+birds_mse <- mean((catdat.test[[c("birds")]] - lm_birds_hat)^2)
+
+lm_birds_hat_train <- predict(lm_6, catdat.train[c("wetfood", "daily.playtime", "children.13", "urban", "bell", "daily.outdoortime")])
+
+plot.new()
+par(mfrow=c(1,1))
+plot(catdat.test[[c("birds")]], lm_birds_hat, xlim=c(0,400), ylim=c(0,400), xlab="birds test", ylab="birds predicted")
+
+plot.new()
+par(mfrow=c(1,1))
+plot(catdat.train[[c("birds")]], lm_birds_hat_train, xlim=c(0,400), ylim=c(0,400), , xlab="birds train", ylab="birds predicted")
+```
+
+The test MSE for a linear model with 6 parameters (list above) is: `r birds_mse`.
 
 ## c)
 
+We use glmnet to perform Lasso regression. $\lambda$ is chosen through cross validation which is offered as part of the glm-package. The plot below shows how MSE varies with different values of $\lambda$. 
+
+The non-zero coefficients are: weight, dryfood, wetfood, owner.income, daily.playtime, owner.age, house.area, children.13, urban, bell, dogs, daily.outdoortime, neutered.
+
+```{r, echo=TRUE, eval=TRUE,fig.width=6, fig.height=4}
+# Split train and test into feature and response parts
+x.train <- model.matrix(birds ~ ., data = catdat.train)[, -1]
+y.train <- catdat.train$birds
+x.test = model.matrix(birds ~ ., data = catdat.test)[, -1]
+y.test = catdat.test$birds
+
+# Find best lambda and fit model
+set.seed(4268)
+cv.out = cv.glmnet(x.train, y.train, alpha=1)
+plot(cv.out, xlim=c(0, 5))
+bestlam = cv.out$lambda.min
+
+lasso.mod = glmnet(x.train, y.train, alpha=1, lambda=bestlam)
+lasso.pred = predict(lasso.mod, s=bestlam, newx=x.test)
+lasso_birds_mse <- mean((catdat.test[[c("birds")]] - lasso.pred)^2)
+
+# Show coefficients of Lasso model
+coef(lasso.mod, s = bestlam)
+```
+
+The test MSE for the best Lasso-model is: `r lasso_birds_mse`.
 
 ## d)
 
+If we let $\lambda \rightarrow \infty$ the best fit will have all coefficients $\beta_1, \beta_2, ...$ equal to zero. This is because the regularizing term in the objective will dominate the solution. Then the only coefficient left is the intercept $\beta_0$ which optimal value will be equal to the average of the response values of the training examples.
+
+If we let $\lambda = 0$ the regularizing term disappears from the objective. Then we are left with the least squares objective from regular linear regression.
+
+```{r, echo=TRUE, eval=TRUE,fig.width=6, fig.height=4}
+# Extreme lasso values
+lasso.mod_lamzero = glmnet(x.train, y.train, alpha=1, lambda=0)
+lasso.pred_lamzero = predict(lasso.mod_lamzero, s=0, newx=x.test)
+lasso_birds_mse_lamzero <- mean((catdat.test[[c("birds")]] - lasso.pred_lamzero)^2)
+
+lasso.mod_lambig = glmnet(x.train, y.train, alpha=1, lambda=1e10)
+lasso.pred_lambig = predict(lasso.mod_lambig, s=1e10, newx=x.test)
+lasso_birds_mse_lambig <- mean((catdat.test[[c("birds")]] - lasso.pred_lambig)^2)
+```
+
+The test-MSE for the Lasso-model with $\lambda = 0$ is: `r lasso_birds_mse_lamzero`.
+
+The test-MSE for the Lasso-model with $\lambda \rightarrow \infty$ is: `r lasso_birds_mse_lambig`.
 
 ## e)
 
+The model with only intercept is much worse than both the reduced six-parameter linear regression model and the best Lasso-regression model. The difference is about 1 order of magnitude in the MSE.
+
+The full linear model (using all features) is about as good as the reduced linear model and the best Lasso-regression model. This is somewhat not surprising from the plots showing adjusted-$R^2$ and Mallows' Cp in problem 1 b) where we can see that the performance is quite stable for many features. As the BIC parameter showed (in the same plot) is however that we are better off choosing a smaller model with fewer features (which is preferable) although the performance is not much better for the smaller model.
+
+```{r, echo=TRUE, eval=TRUE,fig.width=6, fig.height=4}
+# Model with only intercept
+intercept_mse <- mean((y.test - mean(y.train))^2)
+
+# Full regression model
+lm_full = lm(birds ~ ., catdat.train)
+
+# Predict and calculate MSE
+lmfull_birds_hat <- predict(lm_full, catdat.test)
+lmfull_birds_mse <- mean((catdat.test[[c("birds")]] - lmfull_birds_hat)^2)
+```
+
+The test-MSE for the full linear model is: `r lmfull_birds_mse`.
+
+The test-MSE for the only intercept model is: `r intercept_mse`.
 
 ## f)
 
+The table below summarizes the results from the modeling above. 
 
+|  Model |  MSE |
+|---|---|
+| Full linear model  |  `r lmfull_birds_mse` |
+| Reduced linear model  |  `r birds_mse` |
+| Best Lasso-regression model  |  `r lasso_birds_mse` |
+| Intercept model  |  `r intercept_mse` |
 
+A pure intercept model will only perform well for problems with no signal in the data. The F-test of e.g. the reduced linear model suggests that a null hypothesis of having all coefficients $\beta_1, \beta_2, ...$ equal to zero should be rejected. On this basis it is not unsurprising that the intercept model performs worse than the two other linear models. The best Lasso-regression model (optimized over many values of $\lambda$) lies on the spectrum of the intercept model and the full linear model. Thus, the Lasso-model is expected to to better than the intercept model in this case, because all small values of $\lambda$ will give something similar to a full linear model.
+
+The reduced linear model performs better than the full liner model, but they are still within 1% of each other. So, there is not much gained with respect to. prediction to use a reduced linear model. It could however be beneficial if inference is of interest. The Lasso-regression does slightly better than the reduced linear model. So the bias in the estimation (introduced by the regularization) was dominated by the Lasso-regressions ability to search for a good reduced model. So Lasso proved slightly better than an analyst's effort. Again, with reference to the model criteria plotted, the Lasso-regression was able to search the constant interval of of e.g. adjusted-$R^2$ and find a better solution than the reduced linear model. However, since the interval is constant, it does not make much change in the end result.
 
 # Problem 2
+
 ## a) 
 
+TRUE, TRUE, FALSE, FALSE
 
 ## b)
 
+The basis functions for a cubic spline with knots at the quartiles $q_1$ and $q_2$ of variable X are: $X$, $X^2$, $X^3$, $h(X, q_1)$, $h(X, q_2)$. The function $h(x, q)$ is defined as:
+
+$$h(x, q) = \begin{cases} 
+      (x-q)^3 & x > q \\
+      0  & x \leq q
+   \end{cases}$$
 
 ## c)
-### (i)
 
 
-### (ii)
+We fit polynomials of degree 1, 2, ..., 10 to model the relationship between daily outdoor time and birds killed. The first plot below shows the polynomial fit of degree 1 through 5 and the second plot shows the polynomial fit of degree 6 through 10. We have used different colors in the two plots for the different polynomials:
 
+- Degree 1 and 6 are red
+- Degree 2 and 7 are green
+- Degree 3 and 8 are blue
+- Degree 4 and 9 are yellow
+- Degree 5 and 10 are black
 
+In the daily outdoortime interval from 130 to 260 all polynomials are roughly linear. Approaching the lower and upper limits of the range the polynomials start to display non-linear behaviour.
 
+```{r, echo=TRUE, eval=TRUE, out.width='\\textwidth'}
+
+# Create fits d=1,2,...,10
+fit1<-lm(birds ~ poly(daily.outdoortime, 1, raw=T) , data=catdat.train)
+fit2<-lm(birds ~ poly(daily.outdoortime, 2, raw=T) , data=catdat.train)
+fit3<-lm(birds ~ poly(daily.outdoortime, 3, raw=T) , data=catdat.train)
+fit4<-lm(birds ~ poly(daily.outdoortime, 4, raw=T) , data=catdat.train)
+fit5<-lm(birds ~ poly(daily.outdoortime, 5, raw=T) , data=catdat.train)
+fit6<-lm(birds ~ poly(daily.outdoortime, 6, raw=T) , data=catdat.train)
+fit7<-lm(birds ~ poly(daily.outdoortime, 7, raw=T) , data=catdat.train)
+fit8<-lm(birds ~ poly(daily.outdoortime, 8, raw=T) , data=catdat.train)
+fit9<-lm(birds ~ poly(daily.outdoortime, 9, raw=T) , data=catdat.train)
+fit10<-lm(birds ~ poly(daily.outdoortime, 10, raw=T) , data=catdat.train)
+
+# Create grid and predictions d=1,2,...,10
+pred_grid <- data.frame(daily.outdoortime =seq(min(catdat.train[[c("daily.outdoortime")]]), 
+                                               max(catdat.train[[c("daily.outdoortime")]]), 
+                                               length.out = 100))
+
+pred1 <- predict(fit1, newdata=pred_grid)
+pred2 <- predict(fit2, newdata=pred_grid)
+pred3 <- predict(fit3, newdata=pred_grid)
+pred4 <- predict(fit4, newdata=pred_grid)
+pred5 <- predict(fit5, newdata=pred_grid)
+pred6 <- predict(fit6, newdata=pred_grid)
+pred7 <- predict(fit7, newdata=pred_grid)
+pred8 <- predict(fit8, newdata=pred_grid)
+pred9 <- predict(fit9, newdata=pred_grid)
+pred10 <- predict(fit10, newdata=pred_grid)
+
+# Plot polynomials degree 1 through 5
+{plot(catdat.train[[c("daily.outdoortime")]], catdat.train[[c("birds")]], xlab="daily outdoortime", ylab="birds")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred1, col="red")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred2, col="green")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred3, col="blue")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred4, col="yellow")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred5)}
+
+# Plot polynomials degree 6 through 10
+{plot(catdat.train[[c("daily.outdoortime")]], catdat.train[[c("birds")]], xlab="daily outdoortime", ylab="birds")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred6, col="red")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred7, col="green")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred8, col="blue")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred9, col="yellow")
+lines(x = pred_grid[["daily.outdoortime"]], y = pred10)}
+
+```
+
+We see a clear improvement in going from a 1st degree polynomial to a 2nd degree polynomial. The second degree polynomial catches the increase in birds killed at high values of daily outdoor time. Further increases in the polynomial degree leads to a slow decrease in MSE, but no notable improvements. Higher degree polynomials can do no worse in their predictions than lower degree polynomials, but whatever approvement in MSE above degree 2 is probably only overfitting.
+
+|  Model |  MSE training |
+  |---|---|
+  | 1st degree  |  `r sigma(fit1)^2 * 224/226` |
+  | 2nd degree  |  `r sigma(fit2)^2 * 223/226` |
+  | 3rd degree  |  `r sigma(fit3)^2 * 222/226` |
+  | 4th degree  |  `r sigma(fit4)^2 * 221/226` |
+  | 5th degree  |  `r sigma(fit5)^2 * 220/226` |
+  | 6th degree  |  `r sigma(fit6)^2 * 219/226` |
+  | 7th degree  |  `r sigma(fit7)^2 * 218/226` |
+  | 8th degree  |  `r sigma(fit8)^2 * 217/226` |
+  | 9th degree  |  `r sigma(fit9)^2 * 216/226` |
+  | 10th degree |  `r sigma(fit10)^2 * 215/226`|
 
 # Problem 3
 ## a)
