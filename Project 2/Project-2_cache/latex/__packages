@@ -17,3 +17,6 @@ pROC
 e1071
 tree
 randomForest
+leaps
+Matrix
+glmnet

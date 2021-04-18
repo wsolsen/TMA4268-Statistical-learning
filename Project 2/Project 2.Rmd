@@ -319,6 +319,9 @@ True, True, False, False
 
 
 ## b)
+We are left with the tree split at age<81.5, and age<46.5. 
+
+This is because when we prune the tree we remove the splits that have the least impact, while favoring smaller and smaller trees. Furthermore the pruning happens in a nested fashion, so for each time we find a new subtree we choose an internal node and snip away all the subbranches extending from this node. We see from the cv deviance plot that we first prune away one split, and then we prune away two splits at once. Then since the deviance stays the same at both times, we immediately know that the first pruning happens at (country: indonesia, japan, Korea), and the next at (sex:female), since if the first had happened at (age<48.5), then the next would have to be at (age<46.5). However then the pruning algorithm would rather go directly from the full tree to pruning at (age<46.5).    
 
 
 ## c)
@@ -336,23 +339,15 @@ d.test$diabetes = as.factor(d.test$diabetes)
 ```
 
 
-```{r,fig.width=4,fig.height=4}
-
+```{r}
 set.seed(1)
 t.diabetes = tree(diabetes~.,data = d.train) 
-
-t.diabetes.pred = predict(t.diabetes,d.test, type="class")
-misclass = table(t.diabetes.pred, d.test$diabetes)
-misclass
-1-sum(diag(misclass)/sum(misclass))
 
 cv.diabetes = cv.tree(t.diabetes, FUN = prune.misclass, K=10) 
 cv.diabetes
 plot(cv.diabetes$size,cv.diabetes$dev,type="b",xlab="Terminal nodes")
 
-prune.diabetes = prune.misclass(t.diabetes, best = 3)
-#plot(prune.diabetes)
-#text(prune.diabetes, pretty = 1)
+prune.diabetes = prune.misclass(t.diabetes, best = 14)
 
 prune.diabetes.pred = predict(prune.diabetes,d.test, type="class")
 misclass.prune = table(prune.diabetes.pred, d.test$diabetes)
@@ -360,24 +355,23 @@ misclass.prune
 1-sum(diag(misclass.prune)/sum(misclass.prune))
 ```
 
+We apply 10-fold cost-complexity pruning and observe that the CV error is lowest for the full tree, i.e. 17 terminal nodes. However by pruning to 14 terminal nodes, the CV error only increases slightly (from 77 to 78) and we therefore choose the simpler tree with 14 terminal nodes. This gives us a misclassification error on the test set of about 0.246.  
+
 ### (ii)
 
-```{r}
-library(randomForest)
+```{r,fig.width=6}
 set.seed(1)
 rf.diabetes = randomForest(diabetes~.,data=d.train,ntree=1000,mtry=3,importance=TRUE)
-
+rf.diabetes
 rf.diabetes.pred = predict(rf.diabetes,d.test, type="class")
 misclass.rf = table(rf.diabetes.pred,d.test$diabetes)
 misclass.rf
 1-sum(diag(misclass.rf)/sum(misclass.rf))
 
-rf.diabetes
-importance(rf.diabetes)
 varImpPlot(rf.diabetes)
 ```
 
-We use the more advanced method Random Forest, with the tuning parameters ntree=1000, and mtry=3. From the importance plots we observe that glu and bmi is the most influential variables in the prediction of diabetes.
+We use the more advanced method Random Forest, with the parameters ntree=1000, and mtry=3. We use mtry=3 since we have p=7 predictors and the recommended mtry for classification is $\sqrt{p} = \sqrt{7} \approx 3$. For the ntree parameter we have simply set ntree high enough that the OOB error do not decrease substantially when increasing ntree anymore (Do not have to worry about overfitting here). The test set error is then about 0.233 a slight increase from the single tree. From the importance plots we observe that glu and bmi is the most influential variables in the prediction of diabetes.
 
 # Problem 4
 ## a)
@@ -641,32 +635,30 @@ colnames(GeneData)[21:40] = paste(rep("D", 20), c(1:20), sep = "")
 row.names(GeneData) = paste(rep("G", 1000), c(1:1000), sep = "")
 GeneData = t(GeneData)
 GeneData <- scale(GeneData)
-dim(GeneData)
 ```
 
 ## c)
 
-```{r,eval = T, echo=F,fig.width=11,fig.height=7,out.width="100%"}
+```{r,fig.width=11,fig.height=7, fig.cap="Hierarchical clustering with Euclidean and Correlation based distances."}
 par(mfrow=c(2,3))
 gene.dist.ec = stats::dist(GeneData, method = "euclidean")
-
 gene.dist.corr = as.dist(1-cor(t(GeneData)))
 
 hc.Gene.EcC = hclust(gene.dist.ec,method="complete")
 hc.Gene.EcS = hclust(gene.dist.ec,method="single")
 hc.Gene.EcA = hclust(gene.dist.ec,method="average")
-
 hc.Gene.CorrC = hclust(gene.dist.corr,method="complete")
 hc.Gene.CorrS = hclust(gene.dist.corr,method="single")
 hc.Gene.CorrA = hclust(gene.dist.corr,method="average")
 
-plot(hc.Gene.EcC, main="Complete Linkage",xlab="",ylab="",sub="Euclidean distance")
-plot(hc.Gene.EcS, main="Single Linkage",xlab="",ylab="",sub="Euclidean distance")
-plot(hc.Gene.EcA, main="Average Linkage",xlab="",ylab="",sub="Euclidean distance")
-plot(hc.Gene.CorrC, main="Complete Linkage",xlab="",ylab="",sub="Correlation distance")
-plot(hc.Gene.CorrS, main="Single Linkage",xlab="",ylab="",sub="Correlation distance")
-plot(hc.Gene.CorrA, main="Average Linkage",xlab="",ylab="",sub="Correlation distance")
+plot(hc.Gene.EcC, main="Complete Linkage",xlab="Euclidean distance",ylab="",sub="")
+plot(hc.Gene.EcS, main="Single Linkage",xlab="Euclidean distance",ylab="",sub="")
+plot(hc.Gene.EcA, main="Average Linkage",xlab="Euclidean distance",ylab="",sub="")
+plot(hc.Gene.CorrC, main="Complete Linkage",xlab="Correlation distance",ylab="",sub="")
+plot(hc.Gene.CorrS, main="Single Linkage",xlab="Correlation distance",ylab="",sub="")
+plot(hc.Gene.CorrA, main="Average Linkage",xlab="Correlation distance",ylab="",sub="")
 ```
+
 
 ## d)
 
@@ -680,31 +672,37 @@ cutree(hc.Gene.CorrS,2)
 cutree(hc.Gene.CorrA,2)
 
 ```
+We know that the first 20 tissue samples are healthy and the last 20 are diseased. From above we observe that all the linkage and distance measures in the hierarchical clustering method manage to separate the two groups perfectly. 
+
 
 ## e)
 ### (i)
 
-```{r,fig.width=9,fig.height=9}
+```{r,fig.cap="\\label{fig:PCA12} PC1 and PC2 plotted against each other for the Gene Data. The green dots are healthy tissue samples, whilst the red dots are diseased tissue samples.} 
 pc.Gene = prcomp(GeneData)
-summary(pc.Gene)
+
 cols = c(rep("green",20),rep("red",20))
 
 
 plot(pc.Gene$x[,1:2],col=cols)
 
-GeneLoad = pc.Gene$rotation[,1:2]
-informative_loadings = rbind(
-  head(GeneLoad[order(GeneLoad[,1], decreasing = TRUE),]),
-  head(GeneLoad[order(GeneLoad[,2], decreasing = TRUE),])
-  )
-biplot(x=pc.Gene$x[,1:2],y=informative_loadings,scale=0)
 
-tail(sort(abs(pc.Gene$rotation[,1])),10)
 ```
+
 
 ### (ii)
 
+```{r}
+summary(pc.Gene)
+```
+
+
+From the summary printout of the PCA we find that the first 5 PCs explains about 21.1% of the variance. 
 
 ## f)
 
+```{r}
+tail(sort(abs(pc.Gene$rotation[,1])),10)
+```
 
+We observe in figure \ref{fig:PCA12} that PC1 alone is enough to seperate the two groups, moreover we know that PC1 explains the most variance out of all the PC. Thus we find the genes that vary the most across the two groups by extracting the genes with the highest loadings (in absolute value) from PC1. From above we get that G502, G589, G565, G590, G600 vary the most.
