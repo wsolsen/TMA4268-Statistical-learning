@@ -4,7 +4,8 @@ title: "Compulsory exercise 2: Group 4"
 author: "Øystein Alvestad, Lars Evje and William Scott Grundeland Olsen"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  pdf_document: default
+  pdf_document:
+    default
 ---
 
 ```{r setup, include=FALSE}
@@ -639,7 +640,7 @@ GeneData <- scale(GeneData)
 
 ## c)
 
-```{r,fig.width=11,fig.height=7, fig.cap="Hierarchical clustering with Euclidean and Correlation based distances."}
+```{r,fig.width=11,fig.height=7,fig.cap="Hierarchical clustering with Euclidean and Correlation based distances."}
 par(mfrow=c(2,3))
 gene.dist.ec = stats::dist(GeneData, method = "euclidean")
 gene.dist.corr = as.dist(1-cor(t(GeneData)))
@@ -678,15 +679,13 @@ We know that the first 20 tissue samples are healthy and the last 20 are disease
 ## e)
 ### (i)
 
-```{r,fig.cap="\\label{fig:PCA12} PC1 and PC2 plotted against each other for the Gene Data. The green dots are healthy tissue samples, whilst the red dots are diseased tissue samples.} 
+```{r,fig.cap="\\label{fig:PCA12} PC1 and PC2 plotted against each other for the Gene Data. The green dots are healthy tissue samples, whilst the red dots are diseased tissue samples."} 
+
 pc.Gene = prcomp(GeneData)
 
 cols = c(rep("green",20),rep("red",20))
 
-
 plot(pc.Gene$x[,1:2],col=cols)
-
-
 ```
 
 
