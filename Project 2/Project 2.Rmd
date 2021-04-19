@@ -386,6 +386,7 @@ iii) If class boundaries are non-linear then SVM is more popular, but kernel ver
 iv) Big C => big margin => lower variance and bigger bias.
 -->
 
+
 ## b)
 ### (i)
 A SVM tends to behave better than logistic regression when the classes are well separated, which we would assume them to be here with the genomic data. Also SVM has the ability to work in high dimensional space compared to the small number of samples. Because its design is well suited to genomic data, SVM is often used for this purpose.
