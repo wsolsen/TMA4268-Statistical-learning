@@ -388,13 +388,13 @@ iv) Big C => big margin => lower variance and bigger bias.
 
 ## b)
 ### (i)
-A SVM tends to behave better than logistic regression when the classes are well separated, which we would assume them to be here with the genomic data. Also SVM has the ability to work in high dimensional space compared to the small number of samples.
+A SVM tends to behave better than logistic regression when the classes are well separated, which we would assume them to be here with the genomic data. Also SVM has the ability to work in high dimensional space compared to the small number of samples. Because its design is well suited to genomic data, SVM is often used for this purpose.
 
 Instead of SVM one could for example use a random forest, $K$-nearest neighbor, linear classifiers, or quadratic classifiers.
 
 
 ### (ii)
-The paper introduces an ensemble SVM-Recursive Feature Elimination for gene selection that follows the concept of ensemble and bagging used in random forest but adopts the backward elimination strategy which is the rationale of Recursive Feature Elimination algorithm.
+The paper uses embedded methods with Support Vector Machine classifiers as the base learning model. This is used for gene selection
 
 
 ### (iii)
