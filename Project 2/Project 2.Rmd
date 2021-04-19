@@ -372,7 +372,7 @@ misclass.rf
 varImpPlot(rf.diabetes)
 ```
 
-We use the more advanced method Random Forest, with the parameters ntree=1000, and mtry=3. We use mtry=3 since we have p=7 predictors and the recommended mtry for classification is $\sqrt{p} = \sqrt{7} \approx 3$. For the ntree parameter we have simply set ntree high enough that the OOB error do not decrease substantially when increasing ntree anymore (Do not have to worry about overfitting here). The test set error is then about 0.233 a slight increase from the single tree. From the importance plots we observe that glu and bmi is the most influential variables in the prediction of diabetes.
+We use the more advanced method Random Forest, with the parameters ntree=1000, and mtry=3. We use mtry=3 since we have p=7 predictors and the recommended mtry for classification is $\sqrt{p} = \sqrt{7} \approx 3$. For the ntree parameter we have simply set ntree high enough that the OOB error do not decrease substantially when increasing ntree anymore (Do not have to worry about overfitting here). The test set error is then about 0.233 a slight improvement from the single tree. From the importance plots we observe that glu and bmi is the most influential variables in the prediction of diabetes.
 
 # Problem 4
 ## a)
@@ -610,12 +610,12 @@ points(g2_centroid[1], g2_centroid[2], pch = 15, cex = 2, col = 3)
 We can then measure, using the Euclidean distance, what points are closest to the respective centroids, in this case giving the correct clustering for $K=2$. This is shown in Figure \ref{fig:Clustering}.
 
 ```{r K-means clustering, fig.cap="\\label{fig:Clustering}The $K$-means clustering for the data, with $K=2$."}
-dist <- function(x, y) {
+distance <- function(x, y) {
   return(sqrt(sum((x - y)^2)))
 }
 
 for(i in 1:length(x1)) {
-  X_cluster[i, 3] <- ifelse(dist(g1_centroid, X[i, ]) < dist(g2_centroid, X[i, ]), 1, 2)
+  X_cluster[i, 3] <- ifelse(distance(g1_centroid, X[i, ]) < distance(g2_centroid, X[i, ]), 1, 2)
 }
 
 plot(X,
